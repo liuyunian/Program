@@ -1,8 +1,7 @@
 #include <iostream>
+#include "test.h"
 
 int main(){
-    int a{1};
-    std::cout << a << std::endl;
-
+    std::cout << add(1,2) << std::endl; 
     return 0;
 }
