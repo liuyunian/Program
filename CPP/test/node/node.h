@@ -3,15 +3,14 @@
 #include <iostream>
 
 class Node{
-private:
-    std::string name;
-
 public:
     Node();
-    Node(std::string n);
 
-    void printName();
+    ~Node();
 
+    void print();
+
+    void print(int i);
 };
 
 #endif
