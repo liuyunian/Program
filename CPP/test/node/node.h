@@ -3,14 +3,19 @@
 #include <iostream>
 
 class Node{
+private:
+    std::string m_name;
+
 public:
     Node();
 
-    ~Node();
+    virtual ~Node();
 
-    void print();
+    void setName(std::string name);
 
-    void print(int i);
+    virtual std::string getName();
+
+    virtual void printName() = 0;
 };
 
 #endif

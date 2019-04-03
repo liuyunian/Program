@@ -9,10 +9,11 @@ Node::~Node(){
     std::cout << "执行了父类的析构函数Node::~Node()" << std::endl;
 }
 
-void Node::print(){
-    std::cout << "执行了父类的print()函数" << std::endl; 
+void Node::setName(std::string name){
+    this->m_name = name;
 }
 
-void Node::print(int i){
-    std::cout << "执行了父类的print(int i)函数" << std::endl; 
+std::string Node::getName(){
+    // std::cout << "执行了父类的getName()" << std::endl;
+    return this->m_name;
 }

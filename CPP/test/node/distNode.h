@@ -3,14 +3,19 @@
 #include "node.h"
 
 class DistNode : public Node{
+private:
+    int m_data;
+
 public:
-    DistNode();
+    DistNode(int data);
 
     ~DistNode();
 
-    void print(std::string str);
+    std::string getName();
 
-    using Node::print;
+    void printName();
+
+    int getData();
 };
 
 #endif
