@@ -1,12 +1,10 @@
 #include <iostream>
 #include "distNode.h"
+#include "node.h"
 
 int main(){
-    DistNode dn;    
-
-    dn.print("hello");
-    dn.print();
-    dn.print(1);
+    Node * node = new DistNode(1);
+    delete node;
 
     return 0;
 }
