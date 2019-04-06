@@ -1,3 +1,6 @@
+#ifndef DENSEGRAPH_H_
+#define DENSEGRAPH_H_
+
 #include <iostream>
 #include <cassert>
 #include <vector>
@@ -47,6 +50,15 @@ public:
         return g[i][j];
     }
 
+    void printDenseGraph(){
+        for(int i = 0; i < vNums; i++){
+            for(int j = 0; j < vNums; j++){
+                std::cout << g[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+
     class adjIterator{
     private:
         DenseGraph & m_Graph;
@@ -79,3 +91,5 @@ public:
         }
     };
 };
+
+#endif

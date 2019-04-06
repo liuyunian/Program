@@ -1,3 +1,7 @@
+#ifndef SPARSEGRAPH_H_
+#define SPARSEGRAPH_H_
+
+
 #include <iostream>
 #include <vector>
 #include <cassert>
@@ -47,14 +51,26 @@ public:
         return false;
     }
 
-    class Iterator{
+    void printSparseGraph(){
+        for(int i = 0; i < vNums; i++){
+            std::cout << "vertex " << i << ": ";
+
+            for(int j = 0; j < g[i].size(); j++){
+                std::cout << g[i][j] << " ";
+            }
+
+            std::cout << std::endl;
+        }
+    }
+
+    class adjIterator{
     private:
         SparseGraph & m_Graph;
         int m_vertex;
 
         int m_index;
     public:
-        Iterator(SparseGraph & g, int v) : 
+        adjIterator(SparseGraph & g, int v) : 
             m_Graph(g), 
             m_vertex(v), 
             m_index(0){}
@@ -80,3 +96,5 @@ public:
         }
     };
 };
+
+#endif
