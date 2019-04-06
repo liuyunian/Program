@@ -3,8 +3,8 @@
 #include "node.h"
 
 int main(){
-    Node * node = new DistNode(1);
-    delete node;
-
+    DistNode dn("/ndn", 1);
+    dn.printName();
+    std::cout << dn.getData() << std::endl;
     return 0;
 }

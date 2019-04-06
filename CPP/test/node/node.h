@@ -7,11 +7,9 @@ private:
     std::string m_name;
 
 public:
-    Node();
+    Node(std::string name);
 
     virtual ~Node();
-
-    void setName(std::string name);
 
     virtual std::string getName();
 

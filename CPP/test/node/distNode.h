@@ -7,7 +7,7 @@ private:
     int m_data;
 
 public:
-    DistNode(int data);
+    DistNode(std::string name, int data);
 
     ~DistNode();
 
