@@ -19,7 +19,6 @@ private:
                 depthFirstTraversal(i);
             }
         }
-
     } 
 
 public:
