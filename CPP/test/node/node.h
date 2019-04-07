@@ -10,7 +10,7 @@ public:
     Node(std::string name);
 
     virtual ~Node();
-
+    
     virtual std::string getName();
 
     virtual void printName() = 0;
