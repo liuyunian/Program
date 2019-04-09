@@ -30,12 +30,34 @@ public:
         delete m_b;
         std::cout << "执行了析构函数" << std::endl;
     }
+
+    A& operator=(const A & a){
+        delete m_b;
+        m_b = new B(*a.m_b);
+        std::cout << "执行了拷贝赋值运算符(const A & a)" << std::endl;
+        return *this;
+    }
+
+    A& operator=(A & a){
+        delete m_b;
+        m_b = new B(*a.m_b);
+        std::cout << "执行了拷贝赋值运算符(A & a)" << std::endl;
+        return *this;
+    }
+
+    // A& operator=(A && a){
+    //     delete m_b;
+    //     m_b = a.m_b;
+    //     a.m_b = nullptr;
+    //     std::cout << "执行了移动赋值运算符" << std::endl;
+    //     return *this;
+    // }
 };
 
 int main(){
     A a;
-    A a1(a);
-    A a2(std::move(a));
+    A a1;
+    a1 = a;
 
     return 0;
 }
