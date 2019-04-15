@@ -8,6 +8,19 @@ private:
     int m_value_a;
 
 public:
+    // using func_ptr = void(*)(int);
+
+    // static void myfunc(int data){
+    //     std::cout << "执行了静态函数myfunc" << std::endl;
+    //     std::cout << data << std::endl;
+    // }
+
+    // operator func_ptr(){
+    //     std::cout << "执行了类对象转换成函数指针的类型转换运算符函数" << std::endl;
+
+    //     return myfunc;
+    // }
+
     A(){
         // std::cout << "执行类A的默认构造函数" << std::endl;
     }
@@ -26,7 +39,7 @@ public:
         return *this; 
     }
 
-    // explicit operator int() const {
+    // operator int() const {
     //     std::cout << "执行了类型转换运算符" << std::endl;
 
     //     return this->m_value_a;
@@ -45,25 +58,20 @@ int show(int data){
     return data;
 }
 
-int show(){
-    return 1;
-}
-
 int main(){
-    // A a;
-    int (*p)(int) = show;
-    std::function<int(int)> func = (*p);
-    func(1);
-    // std::map<std::string, std::function<int(int)>> m_opt = {
-    //     {"show", show}
-    //     // {"A_show", a},
-    //     // {"A_show2", A()}
-    // };
+    A a;
+    std::function<int(int)> func(show);
+    std::function<int(int)> func2(a);
+    // func(1);
+    // func2(20);
+    std::map<std::string, std::function<int(int)>> opt = {
+        {"show", func},
+        {"a_show", func2}
+    };
 
-    // m_opt["show"](1);
-    // m_opt["A_show"](1);
-    // m_opt["A_show2"](1);
-    // std::map<std::string, std::function<int(int)>> opt;
+    opt["show"](1);
+    opt["a_show"](1);
+    
 
     return 0;
 }
