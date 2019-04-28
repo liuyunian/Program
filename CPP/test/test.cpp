@@ -1,31 +1,43 @@
 #include <iostream>
+#include <boost/type_index.hpp>
 
-template <typename F, typename T>
-void testFunc(F func, T && data){
-    func(std::forward<T>(data));
-}
-
-void print(int data){
-    std::cout << data << std::endl;
-}
-
-void print2(int & data){
-    ++ data;
-    std::cout << data << std::endl;
-}
-
-void print3(int && data){
+void func(int data){
     std::cout << data << std::endl;
 }
 
 int main(){
-    testFunc(print, 10);
+    // auto i = 3;
+    // const auto j = 4;
+    // int i = 9;
+    // const int & j = i;
+    // auto x = j;
+    // int data  = 10;
+    // auto & x = data;
+    // const auto & y = data; 
+    // auto & i = y;
 
-    int a = 8;
-    testFunc(print2, a);
-    std::cout << a << std::endl;
+    // auto * x = &data;
+    // auto y = &data;
 
-    testFunc(print3, 10);
-    testFunc(print3, std::move(a));
+    // auto p = new int(10);
+
+    // auto && ref = 10;
+    // int data = 1;
+    // auto && ref2 = data;
+    // auto && ref3 = std::move(data);
+
+    // int data[] = {1, 2};
+    // auto i = data;
+    // auto & j = data;
+
+    // const char str[] = "hello";
+    // auto m = str;
+    // auto & n = str;
+
+    auto f = func;
+
+    using boost::typeindex::type_id_with_cvr;
+    std::cout << "f = " << type_id_with_cvr<decltype(f)>().pretty_name() << std::endl;
+
     return 0;
 }
