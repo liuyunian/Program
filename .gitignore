@@ -35,3 +35,7 @@
 
 # vscode
 .vscode/
+
+# test
+.aac
+.h264
