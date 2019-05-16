@@ -31,6 +31,7 @@
 *.out
 *.app
 *.ii
+*.i
 *.s
 
 # vscode
