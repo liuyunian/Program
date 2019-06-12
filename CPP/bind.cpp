@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cstdio>
 #include <functional>
-
 // void test(int a, int b, int c){
 //     std::cout << "a = " << a << std::endl;
 //     std::cout << "b = " << b << std::endl;
