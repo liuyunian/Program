@@ -33,6 +33,7 @@
 *.ii
 *.i
 *.s
+*.bc
 
 # vscode
 .vscode/
