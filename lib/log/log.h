@@ -27,15 +27,15 @@
 
 void log_set_level(int level);
 
-void log_err(int err_level, char * fmt, ...);
+void log_err(int err_level, const char * fmt, ...);
 
-void log_fatal(int fat_level, char * fmt, ...);
+void log_fatal(int fat_level, const char * fmt, ...);
 
-void log_warn(char * fmt, ...);
+void log_warn(const char * fmt, ...);
 
-void log_info(char * fmt, ...);
+void log_info(const char * fmt, ...);
 
-void log_debug(char * fmt, ...);
+void log_debug(const char * fmt, ...);
 
 static void 
 err_doit(int log_level, int errno_flag, const char * fmt, va_list ap);

@@ -6,15 +6,15 @@
 
 #include "log.h"
 
-#define LINE_SZ 1024
+#define LINE_SZ 4096
 
-static int show_level;
+static int show_level = 0;
 
 void log_set_level(int level){
     show_level = level >> 1;
 }
 
-void log_err(int err_level, char * fmt, ...){
+void log_err(int err_level, const char * fmt, ...){
     va_list ap;
     va_start(ap, fmt);
     err_doit(LOG_ERR, err_level, fmt, ap);
@@ -23,7 +23,7 @@ void log_err(int err_level, char * fmt, ...){
     return;
 }
 
-void log_fatal(int fat_level, char * fmt, ...){
+void log_fatal(int fat_level, const char * fmt, ...){
     va_list ap;
     va_start(ap, fmt);
     err_doit(LOG_FATAL, fat_level, fmt, ap);
@@ -36,7 +36,7 @@ void log_fatal(int fat_level, char * fmt, ...){
     exit(1);
 }
 
-void log_warn(char * fmt, ...){
+void log_warn(const char * fmt, ...){
     if(!(LOG_WARN >> show_level)){
         return;
     }
@@ -47,7 +47,7 @@ void log_warn(char * fmt, ...){
     va_end(ap);
 }
 
-void log_info(char * fmt, ...){
+void log_info(const char * fmt, ...){
     if(!(LOG_INFO >> show_level)){
         return;
     }
@@ -57,7 +57,7 @@ void log_info(char * fmt, ...){
     va_end(ap);
 }
 
-void log_debug(char * fmt, ...){
+void log_debug(const char * fmt, ...){
     if(!(LOG_DEBUG >> show_level)){
         return;
     }
