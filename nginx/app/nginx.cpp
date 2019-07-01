@@ -1,6 +1,4 @@
-﻿
-
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <unistd.h>
 
 #include "ngx_func.h"  //头文件路径，已经使用gcc -I参数指定了
