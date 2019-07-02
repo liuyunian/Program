@@ -3,9 +3,11 @@
 
 #include <string>
 
+#include "ngx_global.h"
+
 class ConfFileProcessor{
 private:
-    ConfFileProcessor(const std::string & confFileName);
+    ConfFileProcessor();
 
     ~ConfFileProcessor(); 
 
@@ -22,20 +24,23 @@ private:
     };
 
 public:
-    static ConfFileProcessor * getInstance(const std::string & confFileName){
+    static ConfFileProcessor * getInstance(){
         if(instance == nullptr){
-            instance = new ConfFileProcessor(confFileName);
+            instance = new ConfFileProcessor;
             static GCInstance gc;
         }
 
         return instance;
     }
 
-    bool load();
+    bool load(const char * confFileName);
+
+    const char * getItemContent_str(const char * itemName);
+
+    int getItemContent_int(const char * itemName, const int def);
 
 private:
-    std::string m_confFileName;
-    
+    std::vector<CConfItem *> m_confItemList;
 };
 
 #endif

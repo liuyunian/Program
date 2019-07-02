@@ -1,7 +1,10 @@
-﻿#ifndef __NGX_FUNC_H__
-#define __NGX_FUNC_H__
+﻿#ifndef NGX_FUNC_H__
+#define NGX_FUNC_H__
 
-//函数声明
-void myconf();    
-#define  MYVER  "1.2"
+/**
+ * 字符串相关函数
+*/
+void Rtrim(char *string);
+void Ltrim(char *string);
+
 #endif  

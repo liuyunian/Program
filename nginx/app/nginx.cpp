@@ -1,21 +1,21 @@
 ﻿#include <stdio.h>
 #include <unistd.h>
 
-#include "ngx_func.h"  //头文件路径，已经使用gcc -I参数指定了
-#include "ngx_signal.h"
+#include "ngx_c_conf.h"
 
-int main(int argc, char *const *argv)
-{             
-    printf("非常高兴，大家和老师一起学习《linux c++通讯架构实战》\n");    
-    myconf();
-    mysignal();
-    
-    /*for(;;)
-    {
-        sleep(1); //休息1秒
-        printf("休息1秒\n");
-    }*/
-    printf("程序退出，再见!\n");
+int main(int argc, char *const *argv){             
+    ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
+    if(!confProcessor->load("nginx.conf")){
+        printf("ERROR: Fail to load config file, exit\n");
+        exit(1);
+    }
+
+    int port = confProcessor->getItemContent_int("ListenPort", 80);
+    printf("ListenPort = %d", port);
+
+    const char * str = confProcessor->getItemContent_str("DBInfo"); 
+    printf("DBInfo = %s", str);
+
     return 0;
 }
 
