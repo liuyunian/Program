@@ -13,4 +13,9 @@ struct CConfItem{
 	char itemContent[CONF_CONTENT_SIZE];
 };
 
+/**
+ * 设置标题
+ */
+extern char ** g_argv;
+
 #endif

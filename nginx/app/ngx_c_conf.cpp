@@ -10,7 +10,9 @@ ConfFileProcessor * ConfFileProcessor::instance = nullptr;
 ConfFileProcessor::ConfFileProcessor(){}
 
 ConfFileProcessor::~ConfFileProcessor(){
-
+    for(auto & confItem : m_confItemList){
+        delete confItem;
+    }
 }
 
 bool ConfFileProcessor::load(const char * confFileName){
@@ -57,7 +59,7 @@ procString:
 			Rtrim(confItem->itemContent);
 			Ltrim(confItem->itemContent);
 
-            printf("itemName = %s, itemContent = %s", confItem->itemName, confItem->itemContent);
+            // printf("itemName = %s, itemContent = %s", confItem->itemName, confItem->itemContent);
             m_confItemList.push_back(confItem);
         }
     }

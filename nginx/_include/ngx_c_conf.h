@@ -2,6 +2,7 @@
 #define NGX_C_CONF_H_
 
 #include <string>
+#include <vector>
 
 #include "ngx_global.h"
 
