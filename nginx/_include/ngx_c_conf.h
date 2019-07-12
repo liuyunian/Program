@@ -41,7 +41,7 @@ public:
     int getItemContent_int(const char * itemName, const int def);
 
 private:
-    std::vector<CConfItem *> m_confItemList;
+    std::vector<ConfItem *> m_confItemList;
 };
 
 #endif

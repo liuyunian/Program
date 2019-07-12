@@ -41,3 +41,9 @@
 # test
 .aac
 .h264
+*.aac
+*.h264
+
+# log
+*.log
+

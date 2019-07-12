@@ -9,5 +9,6 @@ for dir in "" $subdirectory
                 # echo $filePath
                 rm -f $filePath/*.out
                 rm -f $filePath/*.o
+                rm -f $filePath/*.so
             done
     done

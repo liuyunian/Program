@@ -3,6 +3,7 @@
 
 #include "ngx_c_conf.h"
 #include "ngx_global.h"
+#include "ngx_macro.h"
 #include "ngx_func.h"
 
 ConfFileProcessor * ConfFileProcessor::instance = nullptr;
@@ -49,8 +50,8 @@ procString:
 
         char * pos = strchr(lineBuf, '=');
         if(pos != NULL){
-            CConfItem * confItem = new CConfItem;
-            memset(confItem,0,sizeof(CConfItem));
+            ConfItem * confItem = new ConfItem;
+            memset(confItem,0,sizeof(ConfItem));
             strncpy(confItem->itemName, lineBuf, (int)(pos - lineBuf));
             strcpy(confItem->itemContent, pos + 1);
 

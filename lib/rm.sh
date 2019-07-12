@@ -11,3 +11,4 @@ for dir in "" $subdirectory
                 rm -f $filePath/*.o
             done
     done
+
