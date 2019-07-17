@@ -1,6 +1,6 @@
 #include <stdarg.h> // va_list
 #include <string.h> // memset
-#include <stdio.h> // printf vsprintf sprintf
+#include <stdio.h> // sprintf
 #include <stdint.h> // u_int64_t...
 #include <unistd.h> // wirte, STDERR_FILENO
 #include <fcntl.h> // open
@@ -38,7 +38,7 @@ void log_stderr(int level, int err, const char * fmt, ...){
 
     u_char * last, * index;
     last = errStr + NGX_MAX_ERROR_STR; // last指向数组最后一个有效字节的后面
-    index = ngx_slprintf(index, last, "[%s] ", err_levels[level]); // 日志等级
+    index = ngx_slprintf(errStr, last, "[%s] ", err_levels[level]); // 日志等级
     index = ngx_slprintf(index, last, "%d: ", getpid()); // 进程ID
 
     va_start(ap, fmt);

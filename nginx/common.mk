@@ -36,11 +36,10 @@ $(BIN):$(LINK_OBJ)
 	$(CC) -o $@ $^ $(CXXFLAGS)
 
 $(LINK_OBJ_DIR)/%.o:%.cpp
-	$(CC) -I$(INCLUDE_PATH) -o $@ -c $(filter %.cpp,$^) $(CXXFLAGS)
+	$(CC) -I $(INCLUDE_PATH) -o $@ -c $(filter %.cpp,$^) $(CXXFLAGS)
 
 $(DEP_DIR)/%.d:%.cpp
-	echo -n $(LINK_OBJ_DIR)/ > $@
-	gcc -I$(INCLUDE_PATH) -MM $^ >> $@
+	gcc -I $(INCLUDE_PATH) -MM $^ >> $@
 
 
 

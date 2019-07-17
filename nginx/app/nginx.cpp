@@ -21,13 +21,16 @@ int main(int argc, char * argv[]){
     }
 
     log_init();
-    log(NGX_LOG_ERR, 2, "fail to open this file %s", "test.txt");
+    if(signals_init() < 0){ // 如果信号初始化失败
+        exitCode = 1;
+        goto exit_label;
+    }
 
     moveEnviron();
     setTitle("nginx: master");
 
     while(1){
-        printf("sleep 1s\n");
+        log_stderr(NGX_LOG_INFO, 0, "sleep 1s");
         sleep(1);
     }
 

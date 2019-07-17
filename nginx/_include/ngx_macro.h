@@ -20,15 +20,17 @@ typedef unsigned char u_char;
 #define ngx_memcpy(dst, src, n) (((u_char *) memcpy(dst, src, n)) + (n)) // 对memcpy重新包装，使其返回末尾的位置
 
 // 日志一共分成八个等级, 数字越小级别越高
-#define NGX_LOG_STDERR 0    //控制台错误【stderr】最高级别日志，日志的内容不再写入log参数指定的文件，而是会直接将日志输出到标准错误设备比如控制台屏幕
-#define NGX_LOG_EMERG 1    //紧急 【emerg】
-#define NGX_LOG_ALERT 2    //警戒 【alert】
-#define NGX_LOG_CRIT 3    //严重 【crit】
-#define NGX_LOG_ERR 4    //错误 【error】
-#define NGX_LOG_WARN 5    //警告 【warn】
-#define NGX_LOG_NOTICE 6    //注意 【notice】
-#define NGX_LOG_INFO 7    //信息 【info】
-#define NGX_LOG_DEBUG 8    //调试 【debug】
+enum Log_level{
+    NGX_LOG_STDERR, // [stderr] -- 控制台错误，错误直接打印在屏幕上，不再写入日志文件
+    NGX_LOG_EMERG,  // [emerg] -- 紧急
+    NGX_LOG_ALERT,  // [alert] -- 警戒
+    NGX_LOG_CRIT,   // [crit] -- 严重
+    NGX_LOG_ERR,    // [error] -- 错误
+    NGX_LOG_WARN,   // [warn] -- 警告
+    NGX_LOG_NOTICE, // [notice] -- 注意
+    NGX_LOG_INFO,   // [info] -- 信息
+    NGX_LOG_DEBUG   // [debug] -- 调试
+};
 
 #define NGX_LOG_PATH "logs/error.log"
 /**

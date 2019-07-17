@@ -1,6 +1,9 @@
 ﻿#ifndef NGX_FUNC_H__
 #define NGX_FUNC_H__
 
+#include <stdarg.h> // va_list
+#include "ngx_macro.h" // u_char
+
 /**
  * 字符串
  * ngx_string.cpp
@@ -30,5 +33,11 @@ void log_stderr(int level, int err, const char * fmt, ...);
  */
 u_char * ngx_slprintf(u_char * buf, u_char * last, const char * fmt, ...);
 u_char * ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list ap);
+
+/**
+ * 信号
+ */
+int signals_init();
+
 
 #endif  

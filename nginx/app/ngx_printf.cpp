@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <stdio.h>
-
 #include "ngx_macro.h"
 #include "ngx_func.h"
 
@@ -20,7 +18,7 @@ u_char * ngx_slprintf(u_char * buf, u_char * last, const char * fmt, ...){
     return buf;
 }
 
-u_char * ngx_vslprintf(u_char *buf, u_char *last,const char *fmt, va_list ap){
+u_char * ngx_vslprintf(u_char * buf, u_char * last, const char * fmt, va_list ap){
     int64_t i64; // 保存有符号整数
     uint64_t ui64; // 保存无符号整数
     char ch; // 保存字符
