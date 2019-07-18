@@ -36,8 +36,14 @@ u_char * ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list ap);
 
 /**
  * 信号
+ * ngx_signal.cpp
  */
-int signals_init();
+int ngx_signals_init();
 
+/**
+ * 子进程
+ * ngx_process_cycle.cpp
+ */
+void ngx_master_process_cycle();
 
 #endif  

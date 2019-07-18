@@ -5,7 +5,7 @@
 #include "ngx_func.h"
 #include "ngx_macro.h"
 
-static void signal_handler(int signo, siginfo_t *siginfo, void *ucontext);
+static void ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext);
 
 struct Signal{
     int signo; // 信号值
@@ -14,12 +14,12 @@ struct Signal{
 };
 
 Signal signals[] = {
-    {SIGHUP, "SIGHUP", signal_handler}, // 标识1 -- 终端断开信号，对于守护进程常用于reload重载配置文件通知
-    // {SIGINT, "SIGINT", signal_handler}, // 标识2
-    {SIGQUIT, "SIGQUIT", signal_handler}, // 标识3
-	{SIGTERM, "SIGTERM", signal_handler}, // 标识15
-    {SIGCHLD, "SIGCHLD", signal_handler}, // 标识17 -- 子进程退出时，父进程会收到这个信号
-    {SIGIO, "SIGIO", signal_handler}, // 标识29 -- 通用异步I/O信号
+    {SIGHUP, "SIGHUP", ngx_signal_handler}, // 标识1 -- 终端断开信号，对于守护进程常用于reload重载配置文件通知
+    // {SIGINT, "SIGINT", ngx_signal_handler}, // 标识2
+    {SIGQUIT, "SIGQUIT", ngx_signal_handler}, // 标识3
+	{SIGTERM, "SIGTERM", ngx_signal_handler}, // 标识15
+    {SIGCHLD, "SIGCHLD", ngx_signal_handler}, // 标识17 -- 子进程退出时，父进程会收到这个信号
+    {SIGIO, "SIGIO", ngx_signal_handler}, // 标识29 -- 通用异步I/O信号
     {SIGSYS, "SIGSYS, SIG_IGN", NULL}, // 标识31 -- SIGSYS表示收到了一个无效系统调用，如果我们不忽略，进程会被操作系统杀死
     //...日后根据需要再继续增加
     {0, NULL, NULL} // 信号对应的数字至少是1，所以可以用0作为一个特殊标记
@@ -29,7 +29,7 @@ Signal signals[] = {
  * @brief 信号初始化函数，用于给信号注册信号处理函数
  * @return 0：初始化成功 -1：初始化失败
  */
-int signals_init(){
+int ngx_signals_init(){
     struct sigaction sa; // sigaction：系统定义的跟信号有关的一个结构，我们后续调用系统的sigaction()函数时要用到这个同名的结构
 
     Signal * sig;
@@ -57,6 +57,6 @@ int signals_init(){
     return 0;
 }
 
-static void signal_handler(int signo, siginfo_t * siginfo, void * ucontext){
+static void ngx_signal_handler(int signo, siginfo_t * siginfo, void * ucontext){
     log_stderr(NGX_LOG_INFO, 0, "Receive a signal %d", signo);
 }

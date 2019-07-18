@@ -21,18 +21,15 @@ int main(int argc, char * argv[]){
     }
 
     log_init();
-    if(signals_init() < 0){ // 如果信号初始化失败
+    if(ngx_signals_init() < 0){ // 如果信号初始化失败
         exitCode = 1;
         goto exit_label;
     }
 
     moveEnviron();
-    setTitle("nginx: master");
+    setTitle("nginx: master"); // 设置主进程标题
 
-    while(1){
-        log_stderr(NGX_LOG_INFO, 0, "sleep 1s");
-        sleep(1);
-    }
+    ngx_master_process_cycle();
 
 exit_label:
     freeSource();
