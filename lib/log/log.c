@@ -10,6 +10,12 @@
 
 static int show_level = 0;
 
+static void 
+err_doit(int log_level, int errno_flag, const char * fmt, va_list ap);
+
+static void 
+info_doit(int log_level, const char * fmt, va_list ap);
+
 void log_set_level(int level){
     show_level = level >> 1;
 }
@@ -87,12 +93,7 @@ err_doit(int log_level, int errno_flag, const char * fmt, va_list ap){
     }
 
     buf_len = strlen(buf);
-
-#ifdef HAVE_VSNPRINTF
     vsnprintf(buf + buf_len, LINE_SZ - buf_len, fmt, ap);
-#else
-    vsprintf(buf + buf_len, fmt, ap);
-#endif
 
     buf_len = strlen(buf);
     if(errno_flag){
@@ -126,12 +127,7 @@ info_doit(int log_level, const char * fmt, va_list ap){
     }
 
     buf_len = strlen(buf);
-
-#ifdef HAVE_VSNPRINTF
     vsnprintf(buf + buf_len, LINE_SZ - buf_len, fmt, ap);
-#else
-    vsprintf(buf + buf_len, fmt, ap);
-#endif
     strcat(buf, "\n");
 
     fflush(stdout);
