@@ -42,7 +42,7 @@ void ngx_master_process_cycle(){
         // sleep(1);
 
         sigsuspend(&set); // 阻塞在这里，等待一个信号，此时进程是挂起的，不占用cpu时间，只有收到信号才会被唤醒，此时master进程完全靠信号驱动干活
-        log_stderr(NGX_LOG_DEBUG, 0, "执行完sigsuspend");
+        // log_stderr(NGX_LOG_DEBUG, 0, "执行完sigsuspend");
     }
 }
 
