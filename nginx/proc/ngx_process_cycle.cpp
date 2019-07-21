@@ -69,7 +69,9 @@ static void
 ngx_worker_process_cycle(int seq){
     ngx_worker_process_init(seq);
 
+    g_procType = NGX_WORKER_PROCESS;
     setTitle("nginx: worker");
+    log(NGX_LOG_NOTICE, 0, "nginx: worker %d 启动并开始运行......!", getpid());
 
     for(;;){ // worker process进入工作循环
         // log_stderr(NGX_LOG_DEBUG, 0, "worker process %d", seq);

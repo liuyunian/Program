@@ -24,6 +24,11 @@ struct LogInfor{
 	int log_level; // log级别
 };
 
-extern LogInfor ngx_log;
+extern LogInfor g_logInfor;
+
+/**
+ * 进程
+ */
+extern int g_procType; // 用于记录当前是master还是worker
 
 #endif

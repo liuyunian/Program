@@ -8,6 +8,8 @@
 static void freeSource();
 
 char ** g_argv;
+int g_procType;
+LogInfor g_logInfor;
 
 int main(int argc, char * argv[]){
     g_argv = argv;
@@ -45,7 +47,9 @@ int main(int argc, char * argv[]){
 
     // 设置父进程标题
     moveEnviron();
+    g_procType = NGX_MASTER_PROCESS;
     setTitle("nginx: master"); // 设置主进程标题
+    log(NGX_LOG_NOTICE, 0, "nginx: master %d 启动并开始运行......!", getpid());
 
     // 进入master进程工作循环
     ngx_master_process_cycle();
@@ -60,8 +64,8 @@ static void freeSource(){
     freeEnviron();
 
     // 关闭日志文件
-    if(ngx_log.log_fd != STDERR_FILENO && ngx_log.log_fd != -1){        
-        close(ngx_log.log_fd);
-        ngx_log.log_fd = -1;     
+    if(g_logInfor.log_fd != STDERR_FILENO && g_logInfor.log_fd != -1){        
+        close(g_logInfor.log_fd);
+        g_logInfor.log_fd = -1;     
     }
 }

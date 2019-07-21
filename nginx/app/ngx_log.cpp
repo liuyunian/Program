@@ -16,8 +16,6 @@ extern int errno;
 
 static u_char * log_errno(u_char * buf, u_char * last, int err);
 
-LogInfor ngx_log;
-
 static u_char err_levels[][20] = {
     {"stderr"},    //0：控制台错误
     {"emerg"},     //1：紧急
@@ -84,12 +82,12 @@ void log_init(){
     if(fileName == NULL){ // 配置文件中没有设置LogFile的值
         fileName = NGX_LOG_PATH;
     }
-    ngx_log.log_level = confProcessor->getItemContent_int("LogLevel", 6);
+    g_logInfor.log_level = confProcessor->getItemContent_int("LogLevel", 6);
 
-    ngx_log.log_fd = open(fileName, O_WRONLY|O_APPEND|O_CREAT, 0644);
-    if (ngx_log.log_fd < 0){
+    g_logInfor.log_fd = open(fileName, O_WRONLY|O_APPEND|O_CREAT, 0644);
+    if (g_logInfor.log_fd < 0){
         log_stderr(NGX_LOG_ERR, errno, "Failed to open error log file");
-        ngx_log.log_fd = STDERR_FILENO; //直接定位到标准错误去了, 这就是直接打印到屏幕上  
+        g_logInfor.log_fd = STDERR_FILENO; //直接定位到标准错误去了, 这就是直接打印到屏幕上  
     } 
 }
 
@@ -138,8 +136,8 @@ void log(int level, int err, const char *fmt, ...){
     *index = '\n'; //末尾添加换行符 
     ++ index; 
 
-    if(level <= ngx_log.log_level){
-        ssize_t len = write(ngx_log.log_fd, errStr, index - errStr);
+    if(level <= g_logInfor.log_level){
+        ssize_t len = write(g_logInfor.log_fd, errStr, index - errStr);
         if(len < 0){
             write(STDERR_FILENO, errStr, index - errStr);
         }

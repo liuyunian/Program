@@ -33,9 +33,18 @@ enum Log_level{
 };
 
 #define NGX_LOG_PATH "logs/error.log"
+
 /**
  * 数字相关
  */
 #define NGX_INT64_LEN 20 //64位有符号整型数据换成字符串形式的长度
+
+/**
+ * 进程
+ */
+enum Process_type{
+    NGX_MASTER_PROCESS,
+    NGX_WORKER_PROCESS
+};
 
 #endif
