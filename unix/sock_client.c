@@ -19,7 +19,7 @@ int main(){
     memset(&serv_addr, 0, sizeof(struct sockaddr_in));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
-    if(inet_pton(AF_INET, IP, &serv_addr.sin_addr) <= 0){
+    if(inet_pton(AF_INET, IP, &serv_addr.sin_addr) <= 0){ // IP地址转换
         printf("Failed to exec inet_pton()\n");
         exit(1);
     }
