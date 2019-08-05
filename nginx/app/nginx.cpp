@@ -4,6 +4,7 @@
 #include "ngx_c_conf.h"
 #include "ngx_func.h"
 #include "ngx_macro.h"
+#include "ngx_c_socket.h"
 
 static void freeSource();
 
@@ -14,6 +15,7 @@ LogInfor g_logInfor;
 int main(int argc, char * argv[]){
     g_argv = argv;
     int exitCode = 0;
+    Socket sock;
 
     // 加载配置文件
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
@@ -28,6 +30,11 @@ int main(int argc, char * argv[]){
 
     // 初始化信号
     if(ngx_signals_init() < 0){ // 如果信号初始化失败
+        exitCode = 1;
+        goto exit_label;
+    }
+
+    if(!sock.ngx_sockets_init()){
         exitCode = 1;
         goto exit_label;
     }
