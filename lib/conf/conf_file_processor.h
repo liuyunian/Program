@@ -1,8 +1,12 @@
-#ifndef NGX_C_CONF_H_
-#define NGX_C_CONF_H_
+#ifndef CONF_FILE_PROCESSOR_H_
+#define CONF_FILE_PROCESSOR_H_
 
 #include <string>
 #include <map>
+
+#define CONF_LINE_SZ 500
+#define CONF_NAME_SZ 50
+#define CONF_CONTENT_SZ 400
 
 class ConfFileProcessor{
 private:
@@ -76,4 +80,4 @@ private:
     std::map<std::string, std::string> m_confItemStore;
 };
 
-#endif
+#endif // CONF_FILE_PROCESSOR_H_

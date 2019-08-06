@@ -10,16 +10,15 @@
 #include "ngx_c_conf.h"
 #include "ngx_c_socket.h"
 
-#define NGX_LISTEN_BACKLOG 511
-
-Socket::Socket()
-    : m_portCount(1){}
+Socket::Socket() : 
+    m_portCount(0)
+    {}
 
 Socket::~Socket(){}
 
 bool Socket::ngx_sockets_init(){
     ConfFileProcessor * confProcess = ConfFileProcessor::getInstance();
-    int portCount = confProcess->getItemContent_int("PortCount", m_portCount);
+    m_portCount = confProcess->getItemContent_int("PortCount", NGX_PROT_COUNT);
 
     int sockfd;
     struct sockaddr_in serv_addr;
@@ -30,7 +29,7 @@ bool Socket::ngx_sockets_init(){
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    for(int i = 1; i <= portCount; ++ i){
+    for(int i = 1; i <= m_portCount; ++ i){
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if(sockfd < 0){
             log(NGX_LOG_CRIT, errno, "Socket::ngx_open_listening_sockets()中执行socket()失败, i = %d", i);
@@ -56,11 +55,16 @@ bool Socket::ngx_sockets_init(){
 
         memset(tmp_str, 0, 100);
         sprintf(tmp_str, "Port%d", i);
-        port = confProcess->getItemContent_int(tmp_str, -1);
+        port = confProcess->getItemContent_int(tmp_str);
         if(port < 0){
-            log(NGX_LOG_ERR, 0, "配置文件中没有提供Port%d", i);
-            close(sockfd);                                               
-            return false;
+            if(m_portCount == 1){
+                port = NGX_LISTEN_PORT;
+            }
+            else{
+                log(NGX_LOG_ERR, 0, "配置文件中没有提供Port%d", i);
+                close(sockfd);                                               
+                return false;
+            }
         }
 
         serv_addr.sin_port = htons(in_port_t(port));

@@ -1,10 +1,9 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <string>
 
-#include "ngx_c_conf.h"
-#include "ngx_macro.h"
+#include "conf_file_processor.h"
 
 ConfFileProcessor * ConfFileProcessor::instance = nullptr;
 

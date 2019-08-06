@@ -3,6 +3,7 @@
 #include <unistd.h> // fork
 
 #include "ngx_func.h"
+#include "ngx_global.h"
 #include "ngx_c_conf.h"
 
 static void ngx_start_worker_processes(int wp_num);
@@ -31,8 +32,8 @@ void ngx_master_process_cycle(){
         log(NGX_LOG_ALERT, errno, "ngx_master_process_cycle()中sigprocmask()失败!");
     }
 
-    ConfFileProcessor * confProcess = ConfFileProcessor::getInstance();
-    int wp_num = confProcess->getItemContent_int("WorkProcess", 1);
+    ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
+    int wp_num = confProcessor->getItemContent_int("WorkProcess", NGX_WORKER_PROCESSES);
     ngx_start_worker_processes(wp_num);
 
     sigemptyset(&set); // 清空信号集

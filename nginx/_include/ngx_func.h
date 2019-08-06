@@ -5,13 +5,6 @@
 #include "ngx_macro.h" // u_char
 
 /**
- * 字符串
- * ngx_string.cpp
-*/
-void Rtrim(char *string);
-void Ltrim(char *string);
-
-/**
  * 设置标题
  * ngx_setTitle.cpp
  */

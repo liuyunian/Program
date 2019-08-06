@@ -5,6 +5,7 @@
 #include "ngx_func.h"
 #include "ngx_macro.h"
 #include "ngx_c_socket.h"
+#include "ngx_global.h"
 
 static void freeSource();
 
@@ -40,7 +41,7 @@ int main(int argc, char * argv[]){
     }
 
     // 是否以守护进程方式运行
-    if(confProcessor->getItemContent_int("Paemon", 0) == 1){
+    if(confProcessor->getItemContent_int("Paemon", NGX_IS_DAEMON) == 1){
         int ret_daemon = ngx_create_daemon();
         if(ret_daemon < 0){
             exitCode = 1;

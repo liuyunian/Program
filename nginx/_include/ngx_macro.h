@@ -6,9 +6,9 @@
 /**
  * 配置文件
  */
-#define CONF_LINE_SIZE 500
-#define CONF_NAME_SIZE 50
-#define CONF_CONTENT_SIZE 400
+#define CONF_LINE_SZ 500
+#define CONF_NAME_SZ 50
+#define CONF_CONTENT_SZ 400
 
 /**
  * 日志
@@ -32,7 +32,11 @@ enum Log_level{
     NGX_LOG_DEBUG   // [debug] -- 调试
 };
 
+// [default]日志文件输出路径
 #define NGX_LOG_PATH "logs/error.log"
+
+// [default]日志级别
+#define NGX_LOG_LEVEL NGX_LOG_NOTICE
 
 /**
  * 数字相关
@@ -46,5 +50,22 @@ enum Process_type{
     NGX_MASTER_PROCESS,
     NGX_WORKER_PROCESS
 };
+
+// [default]worker进程数目
+#define NGX_WORKER_PROCESSES 1
+
+// [default]是否采用守护进程方式运行
+#define NGX_IS_DAEMON 0
+
+/**
+ * 网络
+ */
+// [default]监听端口数目
+#define NGX_PROT_COUNT 1
+
+// [default]监听端口
+#define NGX_LISTEN_PORT 80
+
+#define NGX_LISTEN_BACKLOG 511
 
 #endif

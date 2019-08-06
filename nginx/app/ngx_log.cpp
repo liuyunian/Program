@@ -10,6 +10,7 @@
 
 #include "ngx_macro.h"
 #include "ngx_func.h"
+#include "ngx_global.h"
 #include "ngx_c_conf.h"
 
 extern int errno;
@@ -79,10 +80,10 @@ u_char * log_errno(u_char * buf, u_char * last, int err){
 void log_init(){
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
     const char * fileName = confProcessor->getItemContent_str("LogFile");
-    if(fileName == NULL){ // 配置文件中没有设置LogFile的值
+    if(fileName == nullptr){ // 配置文件中没有设置LogFile的值
         fileName = NGX_LOG_PATH;
     }
-    g_logInfor.log_level = confProcessor->getItemContent_int("LogLevel", 6);
+    g_logInfor.log_level = confProcessor->getItemContent_int("LogLevel", NGX_LOG_LEVEL);
 
     g_logInfor.log_fd = open(fileName, O_WRONLY|O_APPEND|O_CREAT, 0644);
     if (g_logInfor.log_fd < 0){

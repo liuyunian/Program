@@ -2,15 +2,6 @@
 #define NGX_GLOBAL_H_
 
 #include "ngx_macro.h"
-
-/**
- * 配置文件
- */
-struct ConfItem{
-	char itemName[CONF_NAME_SIZE];
-	char itemContent[CONF_CONTENT_SIZE];
-};
-
 /**
  * 设置标题
  */
