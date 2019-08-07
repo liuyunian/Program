@@ -2,19 +2,29 @@
 #include <errno.h> // errno
 #include <unistd.h> // close
 #include <sys/socket.h> // socket setsockopt
-#include <arpa/inet.h> // sockaddr_in
 #include <sys/ioctl.h> //ioctl
+#include <sys/epoll.h> // epoll_create
+#include <arpa/inet.h> // sockaddr_in
 
 #include "ngx_func.h"
 #include "ngx_macro.h"
 #include "ngx_c_conf.h"
 #include "ngx_c_socket.h"
+#include "ngx_c_connectionPool.h"
 
 Socket::Socket() : 
-    m_portCount(0)
+    m_portCount(0),
+    m_epfd(-1),
+    m_connectionPool(nullptr)
     {}
 
-Socket::~Socket(){}
+Socket::~Socket(){
+    // 释放监听套接字
+    for(auto & sock : m_listenSokcetList){
+        delete sock;
+    }
+    m_listenSokcetList.clear();
+}
 
 bool Socket::ngx_sockets_init(){
     ConfFileProcessor * confProcess = ConfFileProcessor::getInstance();
@@ -24,6 +34,7 @@ bool Socket::ngx_sockets_init(){
     struct sockaddr_in serv_addr;
     int port;
     char tmp_str[100];
+    int ret; // 记录返回值
 
     memset(&serv_addr, 0, sizeof(struct sockaddr_in));
     serv_addr.sin_family = AF_INET;
@@ -41,13 +52,15 @@ bool Socket::ngx_sockets_init(){
         //参数3：允许重用本地地址
         //设置 SO_REUSEADDR，目的第五章第三节讲解的非常清楚：主要是解决TIME_WAIT这个状态导致bind()失败的问题
         int reuseaddr = 1;  //1:打开对应的设置项
-        if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&reuseaddr, sizeof(reuseaddr)) < 0){
+        ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&reuseaddr, sizeof(reuseaddr));
+        if(ret < 0){
             log(NGX_LOG_CRIT, errno, "Socket::ngx_open_listening_sockets()中执行setsockopt(SO_REUSEADDR)失败, i = %d", i);
             close(sockfd);                                               
             return false;
         }
 
-        if(!ngx_set_nonblocking(sockfd)){
+        ret = ngx_set_nonblocking(sockfd);
+        if(ret < 0){
             log(NGX_LOG_ERR, errno, "Socket::ngx_open_listening_sockets()中执行ngx_set_nonblocking()失败, i = %d", i);
             close(sockfd);                                               
             return false;
@@ -69,56 +82,111 @@ bool Socket::ngx_sockets_init(){
 
         serv_addr.sin_port = htons(in_port_t(port));
 
-        if(bind(sockfd, (struct sockaddr * )&serv_addr, sizeof(serv_addr)) < 0){
+        ret = bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+        if(ret < 0){
             log(NGX_LOG_CRIT, errno, "Socket::ngx_open_listening_sockets()中执行bind()失败, i = %d", i);
             close(sockfd);                                               
             return false;
         }
 
-        if(listen(sockfd, NGX_LISTEN_BACKLOG) < 0){
+        ret = listen(sockfd, NGX_LISTEN_BACKLOG);
+        if(ret < 0){
             log(NGX_LOG_CRIT, errno, "Socket::ngx_open_listening_sockets()中执行listen()失败, i = %d", i);
             close(sockfd);                                               
             return false;
         }
 
         log(NGX_LOG_INFO, 0, "监听%d端口成功", port);
-        m_listenSokcetStore.insert({port, sockfd});
+        ListenSocket * sock = new ListenSocket;
+        sock->sockfd = sockfd;
+        sock->port = port;
+        sock->connection = nullptr;
+        m_listenSokcetList.push_back(sock);
     }
 
     return true;
 }
 
-void Socket::ngx_close_listening_sockets(){
-    int port;
-    for(auto & item : m_listenSokcetStore){
-        port = item.second;
-        close(port);
-        log(NGX_LOG_INFO, 0, "监听端口%d已关闭", port);
+void Socket::ngx_sockets_close(){
+    for(auto & sock : m_listenSokcetList){
+        close(sock->sockfd);
+        log(NGX_LOG_INFO, 0, "监听端口%d已关闭", sock->port);
     }
 }
 
-bool Socket::ngx_set_nonblocking(int sockfd){
-    int nb=1; // 0：清除，1：设置  
-    if(ioctl(sockfd, FIONBIO, &nb) == -1){ //FIONBIO：设置/清除非阻塞I/O标记：0：清除，1：设置
-        return false;
+int Socket::ngx_set_nonblocking(int sockfd){
+    int nb = 1; // 0：清除，1：设置  
+    if(ioctl(sockfd, FIONBIO, &nb) < 0){ //FIONBIO：设置/清除非阻塞I/O标记：0：清除，1：设置
+        return -1;
     }
 
-    return true;
+    return 0;
+}
 
-    // 如下也是一种写法，跟上边这种写法其实是一样的，但上边的写法更简单
-    /* 
-    // fcntl:file control【文件控制】相关函数，执行各种描述符控制操作
-    // 参数1：所要设置的描述符，这里是套接字【也是描述符的一种】
-    int opts = fcntl(sockfd, F_GETFL);  //用F_GETFL先获取描述符的一些标志信息
-    if(opts < 0){
-        ngx_log_stderr(errno,"CSocekt::setnonblocking()中fcntl(F_GETFL)失败.");
-        return false;
+int Socket::ngx_epoll_init(){
+    ConfFileProcessor * confProcess = ConfFileProcessor::getInstance();
+    int connectionSize = confProcess->getItemContent_int("WorkerConnections", NGX_WORKER_CONNECTIONS);
+
+    // [1] 创建epoll对象
+    m_epfd = epoll_create(connectionSize);
+    if(m_epfd < 0){
+        log(NGX_LOG_CRIT, errno, "ngx_epoll_init()中调用epoll_create()函数失败");
+        return -1;
     }
-    opts |= O_NONBLOCK; //把非阻塞标记加到原来的标记上，标记这是个非阻塞套接字【如何关闭非阻塞呢？opts &= ~O_NONBLOCK,然后再F_SETFL一下即可】
-    if(fcntl(sockfd, F_SETFL, opts) < 0){
-        ngx_log_stderr(errno,"CSocekt::setnonblocking()中fcntl(F_SETFL)失败.");
-        return false;
+
+    // [2] 创建连接池
+    m_connectionPool = new ConnectionPool(connectionSize);
+
+    // [3] 为每个监听套接字绑定一个连接池中的连接
+    TCPConnection * c;
+    for(auto & sock : m_listenSokcetList){
+        c = m_connectionPool->ngx_get_connection(sock->sockfd);
+        if(c == nullptr){
+            log(NGX_LOG_CRIT, 0, "ngx_epoll_init()中执行ngx_get_connection()失败");
+            return -1;
+        }
+        sock->connection = c;
+
+        //  c->r_handler = &ngx_event_accept;
+
+        if(ngx_epoll_addEvent(sock->sockfd, 1, 0, 0, EPOLL_CTL_ADD, c) < 0){
+            return -1;
+        }
     }
-    return true;
-    */
+
+    return 0;
+}
+
+int Socket::ngx_epoll_addEvent(int sockfd, 
+                                int r_event, int w_event, 
+                                uint32_t otherFlags, 
+                                uint32_t eventType, 
+                                TCPConnection * c){
+
+    struct epoll_event et;
+    memset(&et, 0, sizeof(struct epoll_event));
+    if(r_event == 1){
+        et.events = EPOLLIN|EPOLLRDHUP;
+    }
+    else{
+        // 其他事件类型待处理
+    }
+
+    if(otherFlags != 0){
+        et.events |= otherFlags;
+    }
+
+    et.data.ptr = (void *)( (uintptr_t)c | c->instance);   //把对象弄进去，后续来事件时，用epoll_wait()后，这个对象能取出来用 
+                                                             //但同时把一个 标志位【不是0就是1】弄进去
+
+    if(epoll_ctl(m_epfd, eventType, sockfd, &et) < 0){
+        log(NGX_LOG_CRIT, errno, "Socket::ngx_epoll_addEvent()中执行epoll_ctl()失败");
+        return -1;
+    }
+
+    return 0;
+}
+
+int Socket::ngx_epoll_processEvent(){
+
 }

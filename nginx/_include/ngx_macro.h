@@ -68,4 +68,7 @@ enum Process_type{
 
 #define NGX_LISTEN_BACKLOG 511
 
+// [default]连接池大小
+#define NGX_WORKER_CONNECTIONS 1024
+
 #endif

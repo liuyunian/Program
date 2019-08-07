@@ -39,9 +39,4 @@ $(LINK_OBJ_DIR)/%.o:%.cpp
 	$(CC) -I $(INCLUDE_PATH) -o $@ -c $(filter %.cpp,$^) $(CXXFLAGS)
 
 $(DEP_DIR)/%.d:%.cpp
-	gcc -I $(INCLUDE_PATH) -MM $^ >> $@
-
-
-
-
-
+	$(CC) -I $(INCLUDE_PATH) -MM $^ >> $@

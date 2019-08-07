@@ -2,6 +2,7 @@
 #define NGX_GLOBAL_H_
 
 #include "ngx_macro.h"
+
 /**
  * 设置标题
  */
