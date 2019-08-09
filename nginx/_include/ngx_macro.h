@@ -71,4 +71,7 @@ enum Process_type{
 // [default]连接池大小
 #define NGX_WORKER_CONNECTIONS 1024
 
+// 一次从epoll对象中获取的最大事件数
+#define NGX_MAX_EVENTS 512
+
 #endif

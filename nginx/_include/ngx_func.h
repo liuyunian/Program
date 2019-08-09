@@ -1,5 +1,5 @@
-﻿#ifndef NGX_FUNC_H__
-#define NGX_FUNC_H__
+﻿#ifndef NGX_FUNC_H_
+#define NGX_FUNC_H_
 
 #include <stdarg.h> // va_list
 #include "ngx_macro.h" // u_char
@@ -41,7 +41,14 @@ void ngx_master_process_cycle();
 
 /**
  * 守护进程
+ * ngx_daemon.cpp
  */
 int ngx_create_daemon();
 
-#endif  
+/**
+ * 通用网络函数
+ * ngx_net_func.cpp
+ */
+int ngx_set_nonblocking(int sockfd);
+
+#endif // NGX_FUNC_H_

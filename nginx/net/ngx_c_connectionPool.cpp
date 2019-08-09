@@ -31,7 +31,7 @@ ConnectionPool::~ConnectionPool(){
 TCPConnection * ConnectionPool::ngx_get_connection(int sockfd){
     TCPConnection * c = m_freeConnectionPool; // m_freeConnectionPool空闲连接的头部
     if(c == nullptr){
-        log(NGX_LOG_ERR, 0, "不存在空闲的连接");
+        log(NGX_LOG_ERR, 0, "连接池中不存在空闲的连接");
         return nullptr;
     }
 

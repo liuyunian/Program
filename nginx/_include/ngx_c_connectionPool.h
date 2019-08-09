@@ -3,9 +3,9 @@
 
 #include <arpa/inet.h> // sockaddr_in
 
+class Socket;
 struct TCPConnection;
-
-using ngx_event_handle = void (*)(TCPConnection *);
+using ngx_event_handler = void (Socket::*)(TCPConnection *); // Socket成员函数指针
 
 /**
  * @brief 表示一个TCP连接
@@ -19,8 +19,8 @@ struct TCPConnection{
     uint8_t r_ready; // 读准备好标记
     uint8_t w_ready; // 写准备好标记
 
-    ngx_event_handle r_handler; // 读事件的处理方法
-    ngx_event_handle w_handler; // 写事件的处理方法
+    ngx_event_handler r_handler; // 读事件的处理方法
+    ngx_event_handler w_handler; // 写事件的处理方法
 
     TCPConnection * next; // 指向下一个TCP连接
 };
