@@ -58,7 +58,7 @@ enum Process_type{
 #define NGX_IS_DAEMON 0
 
 /**
- * 网络
+ * socket & epoll
  */
 // [default]监听端口数目
 #define NGX_PROT_COUNT 1
@@ -73,5 +73,18 @@ enum Process_type{
 
 // 一次从epoll对象中获取的最大事件数
 #define NGX_MAX_EVENTS 512
+
+/**
+ * 收发包
+ */
+//数据包的最大长度
+#define PKT_MAX_LEN  10240
+
+// 收包状态
+enum Recv_pkt_state{
+    INVALID_STATE = -1,
+    RECV_PKT_HEADER,
+    RECV_PKT_BODY
+};
 
 #endif

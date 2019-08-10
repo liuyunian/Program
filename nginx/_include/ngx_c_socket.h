@@ -2,6 +2,7 @@
 #define NGX_C_SOCKET_H_
 
 #include <vector>
+#include <list>
 
 #include <sys/epoll.h> // epoll_event
 
@@ -15,6 +16,30 @@ struct ListenSocket{
     int sockfd;
     int port;
     TCPConnection * connection;
+};
+
+/**
+ * @brief 包头
+ * 客户端和服务器端协商的数据包格式：包头+包体
+ */
+#pragma pack(1) // 采用1字节对齐
+
+struct PktHeader{
+    uint16_t len; // 记录数据包的长度
+    uint16_t msgType; // 记录消息类型
+};
+
+#pragma pack()
+
+/**
+ * @brief 消息头
+ * 服务器端保存客户端发来的数据的格式是：消息头+包头+包体
+ * 消息头的作用是：记录一些额外的信息，后面会用到
+ */
+struct MsgHeader{
+    TCPConnection * c; // 连接对象
+    u_int64_t curSeq;  // 连接对象的序号，用于判断连接是否作废？？
+    // ...扩展
 };
 
 class Socket{
@@ -54,6 +79,12 @@ private:
 
     void ngx_event_recv(TCPConnection * c);
 
+    void ngx_pktHeader_handle(TCPConnection * c);
+
+    void ngx_pkt_handle(TCPConnection * c);
+
+    void ngx_msgQue_push(uint8_t * msg);
+
 private:
     int m_portCount; // 监听端口的数目
     int m_epfd; // 表示epoll对象
@@ -62,6 +93,8 @@ private:
 
     ConnectionPool * m_connectionPool; // 连接池对象
     std::vector<ListenSocket *> m_listenSokcetList; // 监听socket列表
+
+    std::list<uint8_t *> m_recvMsgQueue; // 接收消息队列
 };
 
 #endif // NGX_C_SOCKET_H_
