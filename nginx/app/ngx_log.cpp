@@ -10,6 +10,7 @@
 #include <sys/time.h> //gettimeofday
 
 #include "ngx_log.h"
+#include "ngx_macro.h"
 #include "ngx_global.h" // g_logInfor
 #include "ngx_c_conf.h" // ConfFileProcessor
 
@@ -39,10 +40,10 @@ void ngx_log_init(){
     g_logInfor.log_level = confProcessor->getItemContent_int("LogLevel", NGX_LOG_LEVEL);
 
     if(confProcessor->getItemContent_int("Daemon", NGX_IS_DAEMON) == 1){
-        g_logInfor.log_out = 0;
+        g_logInfor.log_output = 0;
     }
     else{
-        g_logInfor.log_out = NGX_LOG_OUTPUT;
+        g_logInfor.log_output = NGX_LOG_OUTPUT;
     }
 
     g_logInfor.log_fd = open(fileName, O_WRONLY|O_APPEND|O_CREAT, 0644);

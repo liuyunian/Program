@@ -76,6 +76,7 @@ ngx_worker_process_cycle(int seq){
 
     for(;;){ // worker process进入工作循环
         // sleep(1);
+       g_sock.ngx_epoll_getEvent(-1);
     }
 }
 
@@ -87,5 +88,6 @@ ngx_worker_process_init(int seqs){
         ngx_log(NGX_LOG_ERR, errno, "ngx_worker_process_init()中sigprocmask()失败!");
     }
 
+    g_sock.ngx_epoll_init();
     // 之后增加代码
 }

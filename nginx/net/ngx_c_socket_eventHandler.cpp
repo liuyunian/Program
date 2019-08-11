@@ -1,5 +1,6 @@
 #include <errno.h> // errno
 #include <string.h> // memcpy
+#include <unistd.h> // close
 #include <sys/socket.h> // accpet accpet4
 
 #include "ngx_func.h"
@@ -8,7 +9,7 @@
 #include "ngx_c_socket.h"
 #include "ngx_c_memoryPool.h"
 
-void Socket::ngx_event_accpet(TCPConnection * c){
+void Socket::ngx_event_accept(TCPConnection * c){
     struct sockaddr cliAddr;
     socklen_t addrlen;
     int errnoCp; // 拷贝errno
@@ -19,7 +20,7 @@ void Socket::ngx_event_accpet(TCPConnection * c){
     addrlen = sizeof(struct sockaddr);
     while(1){
         if(accept4_flag){
-            sockfd = accpet4(c->sockfd, &cliAddr, &addrlen, SOCK_NONBLOCK);
+            sockfd = accept4(c->sockfd, &cliAddr, &addrlen, SOCK_NONBLOCK);
         }
         else{
             sockfd = accept(c->sockfd, &cliAddr, &addrlen);
@@ -57,7 +58,7 @@ void Socket::ngx_event_accpet(TCPConnection * c){
             }
         }
 
-        newConnection = m_connectionPool->ngx_get_connection();
+        newConnection = m_connectionPool->ngx_get_connection(sockfd);
         if(newConnection == nullptr){ // 直接错误返回，因为ngx_get_connection()函数中已经写过日志了
             close(sockfd);
             return;
@@ -123,7 +124,7 @@ void Socket::ngx_event_recv(TCPConnection * c){
     // 处理正确接收的情况，采用状态机
     if(c->curRecvPktState == RECV_PKT_HEADER){
         if(len == c->recvLength){ // 接收到了完整的包头
-            ngx_pktHead_handle(c);
+            ngx_pktHeader_handle(c);
         }
         else{
             c->recvIndex += len;
@@ -132,7 +133,7 @@ void Socket::ngx_event_recv(TCPConnection * c){
     }
     else if(c->curRecvPktState == RECV_PKT_BODY){
         if(len == c->recvLength){ // 接收到了完整的包体
-            ngx_pktBody_handle(c);
+            ngx_pkt_handle(c);
         }
         else{
             c->recvIndex += len;
@@ -148,7 +149,7 @@ void Socket::ngx_pktHeader_handle(TCPConnection * c){
     uint16_t pktHd_len = static_cast<uint16_t>(sizeof(PktHeader));
 
     PktHeader * pktHd = (PktHeader *)(c->pktHeader);
-    uint16_t pktLen = ntohs(header->len); // 拿到完整的包长信息
+    uint16_t pktLen = ntohs(pktHd->len); // 拿到完整的包长信息
     if(pktLen < pktHd_len){ // 记录的包长小于包头长度，此时数据包无效
         c->curRecvPktState = RECV_PKT_HEADER;
         c->recvIndex = c->pktHeader;

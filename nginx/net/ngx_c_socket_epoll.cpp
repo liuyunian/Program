@@ -6,6 +6,7 @@
 #include "ngx_log.h"
 #include "ngx_func.h"
 #include "ngx_macro.h"
+#include "ngx_c_conf.h"
 #include "ngx_c_socket.h"
 #include "ngx_c_connectionPool.h"
 

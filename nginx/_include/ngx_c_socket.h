@@ -50,7 +50,7 @@ public:
 
     bool ngx_sockets_init(); // 打开监听套接字
 
-	void ngx_socket_close(); // 关闭监听套接字
+	void ngx_sockets_close(); // 关闭监听套接字
 
     int ngx_epoll_init();
 
@@ -75,7 +75,7 @@ public:
 
 private:
     // epoll事件回调
-    void ngx_event_accpet(TCPConnection * c);
+    void ngx_event_accept(TCPConnection * c);
 
     void ngx_event_close(TCPConnection * c);
 

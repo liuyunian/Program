@@ -1,3 +1,5 @@
+#include <stdint.h> // uintptr_t
+
 #include "ngx_macro.h"
 #include "ngx_func.h"
 #include "ngx_log.h"
@@ -13,6 +15,7 @@ ConnectionPool::ConnectionPool(int size) :
     m_connectionPool = new TCPConnection[m_poolSize];
     TCPConnection * next = nullptr;
     for(int i = m_poolSize-1; i >= 0; -- i){
+        m_connectionPool[i].instance = 1;
         m_connectionPool[i].next = next;
         next = &m_connectionPool[i];
     }
@@ -37,7 +40,7 @@ TCPConnection * ConnectionPool::ngx_get_connection(int sockfd){
     -- m_freeSize;
 
     // [1] 将旧连接对象中的有用的数据暂时保存到变量中 
-    uintptr_t instance = c->instance;
+	uintptr_t instance = c->instance;
     uint64_t curSeq = c->curSeq;
 
     // [2] 清空并赋值

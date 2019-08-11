@@ -1,12 +1,12 @@
 ﻿#include <unistd.h>
 #include <stdio.h>
 
+#include "ngx_log.h"
 #include "ngx_c_conf.h"
 #include "ngx_func.h"
 #include "ngx_macro.h"
 #include "ngx_c_socket.h"
 #include "ngx_global.h"
-#include "ngx_log.h"
 
 static void freeSource();
 
@@ -16,10 +16,11 @@ int g_procType;
 
 struct LogInfor g_logInfor;
 
+Socket g_sock;
+
 int main(int argc, char * argv[]){
     g_argv = argv;
     int exitCode = 0;
-    Socket sock;
 
     // 加载配置文件
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
@@ -38,7 +39,7 @@ int main(int argc, char * argv[]){
         goto exit_label;
     }
 
-    if(!sock.ngx_sockets_init()){
+    if(!g_sock.ngx_sockets_init()){
         exitCode = 1;
         goto exit_label;
     }
