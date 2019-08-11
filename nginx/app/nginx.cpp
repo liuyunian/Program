@@ -6,12 +6,15 @@
 #include "ngx_macro.h"
 #include "ngx_c_socket.h"
 #include "ngx_global.h"
+#include "ngx_log.h"
 
 static void freeSource();
 
 char ** g_argv;
+
 int g_procType;
-LogInfor g_logInfor;
+
+struct LogInfor g_logInfor;
 
 int main(int argc, char * argv[]){
     g_argv = argv;
@@ -21,13 +24,13 @@ int main(int argc, char * argv[]){
     // 加载配置文件
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
     if(!confProcessor->load("nginx.conf")){
-        log_stderr(NGX_LOG_ERR, 0, "Fail to load %s, exit\n", "nginx.conf");
+        printf("Fail to load %s, exit\n", "nginx.conf");
         exitCode = 2;
         goto exit_label; // 不能直接exit，还要释放资源
     }
 
     // 初始化日志
-    log_init();
+    ngx_log_init();
 
     // 初始化信号
     if(ngx_signals_init() < 0){ // 如果信号初始化失败
@@ -41,7 +44,7 @@ int main(int argc, char * argv[]){
     }
 
     // 是否以守护进程方式运行
-    if(confProcessor->getItemContent_int("Paemon", NGX_IS_DAEMON) == 1){
+    if(confProcessor->getItemContent_int("Daemon", NGX_IS_DAEMON) == 1){
         int ret_daemon = ngx_create_daemon();
         if(ret_daemon < 0){
             exitCode = 1;
@@ -57,7 +60,7 @@ int main(int argc, char * argv[]){
     moveEnviron();
     g_procType = NGX_MASTER_PROCESS;
     setTitle("nginx: master"); // 设置主进程标题
-    log(NGX_LOG_NOTICE, 0, "nginx: master %d 启动并开始运行......!", getpid());
+    ngx_log(NGX_LOG_INFO, 0, "nginx: master %d 启动并开始运行......!", getpid());
 
     // 进入master进程工作循环
     ngx_master_process_cycle();
@@ -72,8 +75,5 @@ static void freeSource(){
     freeEnviron();
 
     // 关闭日志文件
-    if(g_logInfor.log_fd != STDERR_FILENO && g_logInfor.log_fd != -1){        
-        close(g_logInfor.log_fd);
-        g_logInfor.log_fd = -1;     
-    }
+    ngx_log_close();
 }

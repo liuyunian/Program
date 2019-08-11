@@ -4,6 +4,7 @@
 
 #include "ngx_func.h"
 #include "ngx_macro.h"
+#include "ngx_log.h"
 #include "ngx_c_socket.h"
 #include "ngx_c_memoryPool.h"
 
@@ -43,14 +44,14 @@ void Socket::ngx_event_accpet(TCPConnection * c){
                 //如何处理...
             }
 
-            log(NGX_LOG_ERR, errnoCp, "ngx_event_accpet()函数中执行accept()函数失败");
+            ngx_log(NGX_LOG_FATAL, errnoCp, "ngx_event_accpet()函数中执行accept()函数失败");
             return;
         }
 
         // 处理accept成功的情况
         if(!accept4_flag){
             if(ngx_set_nonblocking(sockfd) < 0){
-                log(NGX_LOG_ERR, errno, "ngx_event_accpet()中执行ngx_set_nonblocking()失败");
+                ngx_log(NGX_LOG_ERR, errno, "ngx_event_accpet()中执行ngx_set_nonblocking()失败");
                 close(sockfd);                                             
                 return;
             }
@@ -70,7 +71,7 @@ void Socket::ngx_event_accpet(TCPConnection * c){
         newConnection->recvIndex = newConnection->pktHeader;
         newConnection->recvLength = sizeof(PktHeader);
         
-        if(ngx_epoll_addEvent(sockfd, 1, 0, EPOLLET, EPOLL_CTL_ADD, newConnection) < 0){
+        if(ngx_epoll_addEvent(sockfd, 1, 0, 0, EPOLL_CTL_ADD, newConnection) < 0){ // LT模式
             ngx_event_close(newConnection);
             return;
         }
@@ -89,11 +90,15 @@ void Socket::ngx_event_recv(TCPConnection * c){
     ssize_t len = recv(c->sockfd, c->recvIndex, c->recvLength, 0); // recv()系统调用，这里flags设置为0，作用同read()
 
     if(len < 0){ // 出错，通过errno判断错误类型
-        log(NGX_LOG_ERR, errno, "ngx_event_recv()函数中调用recv()函数接收数据错误");
+        ngx_log(NGX_LOG_ERR, errno, "ngx_event_recv()函数中调用recv()函数接收数据错误");
 
         int errnoCp = errno;
-        if(errnoCp == EAGAIN || errnoCp == EWOULDBLOCK){ // 表示没有收到数据，一般只有在ET模式下才会出现该错误
-            // ... 如何处理
+        if(errnoCp == EAGAIN || errnoCp == EWOULDBLOCK){ // 表示没有拿到数据
+            /*
+            一般只有在ET模式下才会出现该错误
+            该错误类型常出现在ET模式下，ET模式下从缓存区中拿数据是要在循环中不断的调用recv()
+            当recv()函数返回-1，并且errno = EAGAIN || EWOULDBLOCK，表示缓冲区中没有数据了，此次接收数据结束
+             */
             return;
         }
 
@@ -104,6 +109,7 @@ void Socket::ngx_event_recv(TCPConnection * c){
 
         if(errnoCp == ECONNRESET){ // 客户端没有正常的关闭连接，此时服务器端也应关闭连接
             ngx_event_close(c);
+            return;
         }
 
         // ... 其他错误等待后续完善
@@ -134,7 +140,7 @@ void Socket::ngx_event_recv(TCPConnection * c){
         }
     }
     else{
-        log(NGX_LOG_ERR, 0, "ngx_event_recv()函数中TCP连接对象c处于无效的收包状态，%d", c->curRecvPktState);
+        ngx_log(NGX_LOG_ERR, 0, "ngx_event_recv()函数中TCP连接对象c处于无效的收包状态，%d", c->curRecvPktState);
     }
 }
 
@@ -202,4 +208,16 @@ void Socket::ngx_pkt_handle(TCPConnection * c){
 void Socket::ngx_msgQue_push(uint8_t * msg){
     // 因业务逻辑要引入多线程，这里要注意临界问题
     m_recvMsgQueue.push_back(msg);
+}
+
+void Socket::ngx_msgQue_clear(){
+    MemoryPool * mp = MemoryPool::getInstance();
+    uint8_t * msg = nullptr;
+    while(!m_recvMsgQueue.empty()){
+        msg = m_recvMsgQueue.front();
+        m_recvMsgQueue.pop_front(); // 移除队首的消息
+        mp->ngx_free_memory(msg);
+    }
+    
+    m_recvMsgQueue.clear();
 }

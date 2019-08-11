@@ -3,6 +3,7 @@
  */
 #include <sys/epoll.h>
 
+#include "ngx_log.h"
 #include "ngx_func.h"
 #include "ngx_macro.h"
 #include "ngx_c_socket.h"
@@ -16,7 +17,7 @@ int Socket::ngx_epoll_init(){
     // [1] 创建epoll对象
     m_epfd = epoll_create(connectionSize);
     if(m_epfd < 0){
-        log(NGX_LOG_CRIT, errno, "ngx_epoll_init()中调用epoll_create()函数失败");
+        ngx_log(NGX_LOG_FATAL, errno, "ngx_epoll_init()中调用epoll_create()函数失败");
         return -1;
     }
 
@@ -60,7 +61,7 @@ int Socket::ngx_epoll_addEvent(int sockfd, int r_event, int w_event, uint32_t ot
                                                              //但同时把一个 标志位【不是0就是1】弄进去
 
     if(epoll_ctl(m_epfd, eventType, sockfd, &et) < 0){
-        log(NGX_LOG_CRIT, errno, "Socket::ngx_epoll_addEvent()中执行epoll_ctl()失败");
+        ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_epoll_addEvent()中执行epoll_ctl()失败");
         return -1;
     }
 
@@ -71,17 +72,17 @@ int Socket::ngx_epoll_getEvent(int timer){
     int events = epoll_wait(m_epfd, m_events, NGX_MAX_EVENTS, timer);
     if(events < 0){ // 表示出错
         if(errno == EINTR){ // 信号中断错误
-            log(NGX_LOG_INFO, errno, "Socket::ngx_epoll_processEvent()中因信号中断导致执行epoll_wait()失败");
+            ngx_log(NGX_LOG_INFO, errno, "Socket::ngx_epoll_processEvent()中因信号中断导致执行epoll_wait()失败");
             return 0; // 这种错误算作正常情况
         }
         else{
-            log(NGX_LOG_ERR, errno, "Socket::ngx_epoll_processEvent()中执行epoll_wait()失败");
+            ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_epoll_processEvent()中执行epoll_wait()失败");
             return -1;
         }
     }
     else if(events == 0){
         if(timer == -1){ // timer等于-1时会一直阻塞，直到事件发生，此时events不可能为0
-            log(NGX_LOG_ERR, 0, "Socket::ngx_epoll_processEvent()中epoll_wait()没超时却没返回任何事件");
+            ngx_log(NGX_LOG_ERR, 0, "Socket::ngx_epoll_processEvent()中epoll_wait()没超时却没返回任何事件");
             return -1;
         }
 
@@ -98,7 +99,7 @@ int Socket::ngx_epoll_getEvent(int timer){
         c = (TCPConnection *) ((uintptr_t)c & (uintptr_t) ~1);
 
         if(c->sockfd == -1 || c->instance != instance){ // 表示该事件是过期事件
-            log(NGX_LOG_DEBUG, 0, "Socket::ngx_epoll_processEvent()中遇到了过期事件");
+            ngx_log(NGX_LOG_DEBUG, 0, "Socket::ngx_epoll_processEvent()中遇到了过期事件");
             continue; // 对于过期事件不予处理
         }
 

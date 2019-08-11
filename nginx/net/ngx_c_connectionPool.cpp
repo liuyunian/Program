@@ -1,5 +1,6 @@
 #include "ngx_macro.h"
 #include "ngx_func.h"
+#include "ngx_log.h"
 #include "ngx_c_connectionPool.h"
 #include "ngx_c_memoryPool.h"
 
@@ -28,7 +29,7 @@ ConnectionPool::~ConnectionPool(){
 TCPConnection * ConnectionPool::ngx_get_connection(int sockfd){
     TCPConnection * c = m_freeConnectionPool; // m_freeConnectionPool空闲连接的头部
     if(c == nullptr){
-        log(NGX_LOG_ERR, 0, "连接池中不存在空闲的连接");
+        ngx_log(NGX_LOG_ERR, 0, "连接池中不存在空闲的连接");
         return nullptr;
     }
 

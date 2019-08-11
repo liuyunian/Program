@@ -2,6 +2,8 @@
 #include <errno.h> // errno
 #include <unistd.h> // fork
 
+#include "ngx_log.h"
+#include "ngx_macro.h"
 #include "ngx_func.h"
 #include "ngx_global.h"
 #include "ngx_c_conf.h"
@@ -29,7 +31,7 @@ void ngx_master_process_cycle(){
     sigaddset(&set, SIGQUIT);     //终端退出符
 
     if(sigprocmask(SIG_BLOCK, &set, NULL) < 0){ // 屏蔽上述信号，不希望在fork子进程时被信号打断
-        log(NGX_LOG_ALERT, errno, "ngx_master_process_cycle()中sigprocmask()失败!");
+        ngx_log(NGX_LOG_ERR, errno, "ngx_master_process_cycle()中sigprocmask()失败!");
     }
 
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
@@ -39,11 +41,9 @@ void ngx_master_process_cycle(){
     sigemptyset(&set); // 清空信号集
 
     for(;;){ // master process进入工作循环
-        // log_stderr(NGX_LOG_DEBUG, 0, "master process");
         // sleep(1);
 
         sigsuspend(&set); // 阻塞在这里，等待一个信号，此时进程是挂起的，不占用cpu时间，只有收到信号才会被唤醒，此时master进程完全靠信号驱动干活
-        // log_stderr(NGX_LOG_DEBUG, 0, "执行完sigsuspend");
     }
 }
 
@@ -52,7 +52,7 @@ ngx_start_worker_processes(int wp_num){
     for(int i = 0; i < wp_num; ++ i){
         pid_t pid = fork();
         if(pid == -1){ // 创建失败
-            log(NGX_LOG_ALERT, errno, "ngx_start_worker_processes()中fork()创建子进程失败，num = %d", i);
+            ngx_log(NGX_LOG_FATAL, errno, "ngx_start_worker_processes()中fork()创建子进程失败，num = %d", i);
         }
         else if(pid == 0){
             ngx_worker_process_cycle(i);
@@ -72,10 +72,9 @@ ngx_worker_process_cycle(int seq){
 
     g_procType = NGX_WORKER_PROCESS;
     setTitle("nginx: worker");
-    log(NGX_LOG_NOTICE, 0, "nginx: worker %d 启动并开始运行......!", getpid());
+    ngx_log(NGX_LOG_INFO, 0, "nginx: worker %d 启动并开始运行......!", getpid());
 
     for(;;){ // worker process进入工作循环
-        // log_stderr(NGX_LOG_DEBUG, 0, "worker process %d", seq);
         // sleep(1);
     }
 }
@@ -85,7 +84,7 @@ ngx_worker_process_init(int seqs){
     sigset_t set;
     sigemptyset(&set);
     if(sigprocmask(SIG_SETMASK, &set, NULL) < 0){
-        log(NGX_LOG_ALERT, errno, "ngx_worker_process_init()中sigprocmask()失败!");
+        ngx_log(NGX_LOG_ERR, errno, "ngx_worker_process_init()中sigprocmask()失败!");
     }
 
     // 之后增加代码

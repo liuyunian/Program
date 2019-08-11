@@ -27,6 +27,7 @@ struct ListenSocket{
 struct PktHeader{
     uint16_t len; // 记录数据包的长度
     uint16_t msgType; // 记录消息类型
+    // ... 待扩展
 };
 
 #pragma pack()
@@ -73,17 +74,22 @@ public:
     int ngx_epoll_getEvent(int timer);
 
 private:
+    // epoll事件回调
     void ngx_event_accpet(TCPConnection * c);
 
     void ngx_event_close(TCPConnection * c);
 
     void ngx_event_recv(TCPConnection * c);
 
+    // 处理接收数据
     void ngx_pktHeader_handle(TCPConnection * c);
 
     void ngx_pkt_handle(TCPConnection * c);
 
+    // 消息队列
     void ngx_msgQue_push(uint8_t * msg);
+
+    void ngx_msgQue_clear();
 
 private:
     int m_portCount; // 监听端口的数目

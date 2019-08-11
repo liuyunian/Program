@@ -1,9 +1,6 @@
 ﻿#ifndef NGX_FUNC_H_
 #define NGX_FUNC_H_
 
-#include <stdarg.h> // va_list
-#include "ngx_macro.h" // u_char
-
 /**
  * 设置标题
  * ngx_setTitle.cpp
@@ -11,21 +8,6 @@
 void moveEnviron();
 void setTitle(const char * title);
 void freeEnviron();
-
-/**
- * 日志
- * ngx_log.cpp
- */
-void log_init();
-void log(int level, int err, const char *fmt, ...);
-void log_stderr(int level, int err, const char * fmt, ...);
-
-/**
- * 打印
- * ngx_printf.cpp
- */
-u_char * ngx_slprintf(u_char * buf, u_char * last, const char * fmt, ...);
-u_char * ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list ap);
 
 /**
  * 信号

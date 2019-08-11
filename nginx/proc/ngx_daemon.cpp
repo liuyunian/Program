@@ -5,12 +5,13 @@
 
 extern int errno;
 
+#include "ngx_log.h"
 #include "ngx_func.h"
 
 int ngx_create_daemon(){
     pid_t pid = fork();
     if(pid < 0){ // 执行出错
-        log(NGX_LOG_EMERG, errno, "ngx_create_daemon函数中fork()失败");
+        ngx_log(NGX_LOG_FATAL, errno, "ngx_create_daemon函数中fork()失败");
         return -1;
     }
     else if(pid == 0){ // 子进程
@@ -18,7 +19,7 @@ int ngx_create_daemon(){
 
         ret = setsid();
         if(ret < 0){
-            log(NGX_LOG_EMERG, errno, "ngx_create_daemon函数中setsid()失败");
+            ngx_log(NGX_LOG_ERR, errno, "ngx_create_daemon函数中setsid()失败");
             return -1;
         }
 
@@ -26,26 +27,26 @@ int ngx_create_daemon(){
 
         int fd = open("/dev/null", O_RDWR);
         if(fd == -1){
-            log(NGX_LOG_EMERG, errno, "ngx_create_daemon函数中open(\"/dev/null\")失败");
+            ngx_log(NGX_LOG_ERR, errno, "ngx_create_daemon函数中open(\"/dev/null\")失败");
             return -1;
         }
 
         ret = dup2(fd, STDIN_FILENO);
         if(ret < 0){
-            log(NGX_LOG_EMERG, errno, "ngx_create_daemon函数中dup2(STDIN_FILENO)失败");
+            ngx_log(NGX_LOG_ERR, errno, "ngx_create_daemon函数中dup2(STDIN_FILENO)失败");
             return -1;
         }
 
         ret = dup2(fd, STDOUT_FILENO);
         if(ret < 0){
-            log(NGX_LOG_EMERG, errno, "ngx_create_daemon函数中dup2(STDOUT_FILENO)失败");
+            ngx_log(NGX_LOG_ERR, errno, "ngx_create_daemon函数中dup2(STDOUT_FILENO)失败");
             return -1;
         }
 
         if(fd > STDERR_FILENO){
             ret = close(fd);
             if(ret < 0){ // 释放资源
-                log(NGX_LOG_EMERG, errno, "ngx_create_daemon函数中close()失败");
+                ngx_log(NGX_LOG_FATAL, errno, "ngx_create_daemon函数中close()失败");
                 return -1;
             }
         }

@@ -53,7 +53,7 @@ int ngx_signals_init(){
         sigemptyset(&sa.sa_mask); // sa_mask是个信号集，用于表示要阻塞的信号
 
         if (sigaction(sig->signo, &sa, NULL) == -1){ // 使用sigaction函数注册信号处理函数
-            log(NGX_LOG_EMERG, errno, "sigaction(%s) failed", sig->signame);
+            ngx_log(NGX_LOG_ERR, errno, "sigaction(%s) failed", sig->signame);
             return -1;
         }
     }
@@ -63,7 +63,6 @@ int ngx_signals_init(){
 
 static void 
 ngx_signal_handler(int signo, siginfo_t * siginfo, void * ucontext){
-    // log_stderr(NGX_LOG_INFO, 0, "Receive a signal %d", signo);
     Signal * sig;
     for(sig = signals; sig->signo != 0; ++ sig){ // 这个for循环有啥用啊？？？
         if(sig->signo == signo){
@@ -89,10 +88,10 @@ ngx_signal_handler(int signo, siginfo_t * siginfo, void * ucontext){
     // }
 
     if(siginfo && siginfo->si_pid){
-        log(NGX_LOG_NOTICE, 0, "signal %d (%s) received from %d%s", signo, sig->signame, siginfo->si_pid, action); 
+        ngx_log(NGX_LOG_INFO, 0, "signal %d (%s) received from %d%s", signo, sig->signame, siginfo->si_pid, action); 
     }
     else{
-        log(NGX_LOG_NOTICE,0,"signal %d (%s) received %s", signo, sig->signame, action);//没有发送该信号的进程id，所以不显示发送该信号的进程id
+        ngx_log(NGX_LOG_INFO,0,"signal %d (%s) received %s", signo, sig->signame, action);//没有发送该信号的进程id，所以不显示发送该信号的进程id
     }
 
     if(signo == SIGCHLD){
@@ -120,23 +119,23 @@ ngx_process_get_status(){
 
             if(err == ECHILD){ // 没有子进程
                 if(!one){
-                    log(NGX_LOG_INFO, err, "ngx_process_get_status函数中执行waitpid()失败");
+                    ngx_log(NGX_LOG_INFO, err, "ngx_process_get_status函数中执行waitpid()失败");
                 }
 
                 return;
             }
 
-            log(NGX_LOG_ALERT, err, "ngx_process_get_status函数中执行waitpid()失败");
+            ngx_log(NGX_LOG_ERR, err, "ngx_process_get_status函数中执行waitpid()失败");
 
             return;
         }
 
         one = 1;
         if(WTERMSIG(status)){
-            log(NGX_LOG_ALERT, 0, "pid = %d exited on signal %d!", pid, WTERMSIG(status)); //获取使子进程终止的信号编号
+            ngx_log(NGX_LOG_ERR, 0, "pid = %d exited on signal %d!", pid, WTERMSIG(status)); //获取使子进程终止的信号编号
         }
         else{
-            log(NGX_LOG_NOTICE,0,"pid = %d exited with code %d!", pid, WEXITSTATUS(status)); //WEXITSTATUS()获取子进程传递给exit或者_exit参数的低八位
+            ngx_log(NGX_LOG_INFO, 0, "pid = %d exited with code %d!", pid, WEXITSTATUS(status)); //WEXITSTATUS()获取子进程传递给exit或者_exit参数的低八位
         }
     }
 }
