@@ -7,7 +7,7 @@ CC = g++
 VERSION = release
 endif
 
-CXXFLAGS = -std=c++11
+CXXFLAGS = -lpthread -std=c++11
 SRCS = $(wildcard *.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
@@ -36,7 +36,7 @@ $(BIN):$(LINK_OBJ)
 	$(CC) -o $@ $^ $(CXXFLAGS)
 
 $(LINK_OBJ_DIR)/%.o:%.cpp
-	$(CC) -I $(INCLUDE_PATH) -o $@ -c $(filter %.cpp,$^) $(CXXFLAGS)
+	$(CC) -I $(INCLUDE_PATH) -o $@ -c $(filter %.cpp,$^)
 
 $(DEP_DIR)/%.d:%.cpp
 	$(CC) -I $(INCLUDE_PATH) -MM $^ >> $@

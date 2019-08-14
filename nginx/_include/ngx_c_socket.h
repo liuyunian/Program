@@ -4,6 +4,7 @@
 #include <vector>
 #include <list>
 
+// #include <pthread.h>
 #include <sys/epoll.h> // epoll_event
 
 #include "ngx_macro.h"
@@ -89,6 +90,8 @@ private:
     // 消息队列
     void ngx_msgQue_push(uint8_t * msg);
 
+    uint8_t * ngx_msgQue_pop();
+
     void ngx_msgQue_clear();
 
 private:
@@ -100,7 +103,8 @@ private:
     ConnectionPool * m_connectionPool; // 连接池对象
     std::vector<ListenSocket *> m_listenSokcetList; // 监听socket列表
 
-    std::list<uint8_t *> m_recvMsgQueue; // 接收消息队列
+    std::list<uint8_t *> m_msgQueue; // 消息队列
+    pthread_mutex_t m_msgQueMutex; // 消息队列互斥量
 };
 
 #endif // NGX_C_SOCKET_H_

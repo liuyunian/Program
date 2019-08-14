@@ -205,20 +205,3 @@ void Socket::ngx_pkt_handle(TCPConnection * c){
     c->recvIndex = c->pktHeader;
     c->recvLength = sizeof(PktHeader);
 }
-
-void Socket::ngx_msgQue_push(uint8_t * msg){
-    // 因业务逻辑要引入多线程，这里要注意临界问题
-    m_recvMsgQueue.push_back(msg);
-}
-
-void Socket::ngx_msgQue_clear(){
-    MemoryPool * mp = MemoryPool::getInstance();
-    uint8_t * msg = nullptr;
-    while(!m_recvMsgQueue.empty()){
-        msg = m_recvMsgQueue.front();
-        m_recvMsgQueue.pop_front(); // 移除队首的消息
-        mp->ngx_free_memory(msg);
-    }
-    
-    m_recvMsgQueue.clear();
-}

@@ -1,6 +1,7 @@
 #include <string.h> // memset
 #include <errno.h> // errno
 #include <unistd.h> // close
+#include <pthread.h> // pthread_mutex_init pthread_mutex_destroy
 #include <sys/socket.h> // socket setsockopt
 #include <arpa/inet.h> // sockaddr_in
 
@@ -14,7 +15,9 @@ Socket::Socket() :
     m_portCount(0),
     m_epfd(-1),
     m_connectionPool(nullptr)
-    {}
+{
+    pthread_mutex_init(&m_msgQueMutex, NULL); // 初始化消息队列互斥量
+}
 
 Socket::~Socket(){
     // 释放监听套接字
@@ -25,6 +28,9 @@ Socket::~Socket(){
 
     // 释放消息队列
     ngx_msgQue_clear();
+
+    // 释放消息队列互斥量
+    pthread_mutex_destroy(&m_msgQueMutex);
 }
 
 bool Socket::ngx_sockets_init(){
