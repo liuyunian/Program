@@ -49,7 +49,7 @@ public:
     Socket();
     ~Socket();
 
-    bool ngx_sockets_init(); // 打开监听套接字
+    int ngx_sockets_init(); // 打开监听套接字
 
 	void ngx_sockets_close(); // 关闭监听套接字
 
@@ -87,13 +87,6 @@ private:
 
     void ngx_pkt_handle(TCPConnection * c);
 
-    // 消息队列
-    void ngx_msgQue_push(uint8_t * msg);
-
-    uint8_t * ngx_msgQue_pop();
-
-    void ngx_msgQue_clear();
-
 private:
     int m_portCount; // 监听端口的数目
     int m_epfd; // 表示epoll对象
@@ -102,9 +95,6 @@ private:
 
     ConnectionPool * m_connectionPool; // 连接池对象
     std::vector<ListenSocket *> m_listenSokcetList; // 监听socket列表
-
-    std::list<uint8_t *> m_msgQueue; // 消息队列
-    pthread_mutex_t m_msgQueMutex; // 消息队列互斥量
 };
 
 #endif // NGX_C_SOCKET_H_

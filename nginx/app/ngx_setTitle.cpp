@@ -7,7 +7,7 @@
 extern char ** environ;
 char * new_environ = NULL;
 
-void moveEnviron(){
+void ngx_move_environ(){
     // 统计环境变量所占用的内存
     size_t len = 0;
     for(int i = 0; environ[i]; ++ i){
@@ -33,7 +33,7 @@ void moveEnviron(){
     memset(old_env, 0, len);
 }
 
-void setTitle(const char * title){
+void ngx_set_title(const char * title){
     // 假设命令行参数都不再使用了
     size_t len = 0;
     for(int i = 0; g_argv[i]; ++ i){
@@ -49,7 +49,7 @@ void setTitle(const char * title){
     tmp_argv += title_len;
 }
 
-void freeEnviron(){
+void ngx_free_environ(){
     if(new_environ){
         delete[] new_environ;
         new_environ = NULL;

@@ -37,21 +37,21 @@ public:
      * @param confFileName配置文件名（绝对路径或者相对路径）
      * @return 成功返回true，否则返回false
      */
-    bool load(const char * confFileName);
+    bool ngx_conf_load(const char * confFileName);
 
     /**
      * @brief 根据配置项的名字获取字符串类型的内容
      * @param itemName 配置项名字
      * @return 如果该配置项存在那么返回配置项内容，否则返回nullptr
      */
-    const char * getItemContent_str(const std::string & itemName);
+    const char * ngx_conf_getContent_str(const std::string & itemName);
 
     /**
      * @brief 根据配置项的名字获取整数类型的内容
      * @param itemName 配置项名字
      * @return 如果该配置项存在那么返回配置项内容，否则返回-1
      */
-    int getItemContent_int(const std::string & itemName);
+    int ngx_conf_getContent_int(const std::string & itemName);
 
     /**
      * @brief 根据配置项的名字获取整数类型的内容，并可以指定默认值
@@ -59,18 +59,18 @@ public:
      * @param def 默认值
      * @return 如果该配置项存在那么返回配置项内容，否则返回指定的默认值
      */
-    int getItemContent_int(const std::string & itemName, const int def);
+    int ngx_conf_getContent_int(const std::string & itemName, const int def);
 
 private:
     /**
      * @brief 截取字符串尾部的空格
      */
-    void trimTailSpace(char * string);
+    void ngx_string_trim_tailSpace(char * string);
 
     /**
      * @brief 截取字符首部的空格
      */
-    void trimHeadSpace(char * string);
+    void ngx_string_trim_headSpace(char * string);
 
 private:
     std::map<std::string, std::string> m_confItemStore;

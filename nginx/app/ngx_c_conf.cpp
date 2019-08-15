@@ -12,7 +12,7 @@ ConfFileProcessor::ConfFileProcessor(){}
 
 ConfFileProcessor::~ConfFileProcessor(){}
 
-bool ConfFileProcessor::load(const char * confFileName){
+bool ConfFileProcessor::ngx_conf_load(const char * confFileName){
     FILE * fp;
     fp = fopen(confFileName, "r");
     if(!fp){
@@ -48,8 +48,8 @@ procString:
             strncpy(itemName, lineBuf, (size_t)(pos-lineBuf));
             strcpy(itemContent, pos + 1);
 
-            trimTailSpace(itemName);
-			trimHeadSpace(itemContent);
+            ngx_string_trim_tailSpace(itemName);
+			ngx_string_trim_headSpace(itemContent);
 
             m_confItemStore.insert({std::string(itemName), std::string(itemContent)});
         }
@@ -59,7 +59,7 @@ procString:
     return true;
 }
 
-const char * ConfFileProcessor::getItemContent_str(const std::string & itemName){
+const char * ConfFileProcessor::ngx_conf_getContent_str(const std::string & itemName){
     auto iter = m_confItemStore.find(itemName);
     if(iter != m_confItemStore.end()){
         return iter->second.c_str();
@@ -68,7 +68,7 @@ const char * ConfFileProcessor::getItemContent_str(const std::string & itemName)
     return nullptr;
 }
 
-int ConfFileProcessor::getItemContent_int(const std::string & itemName){
+int ConfFileProcessor::ngx_conf_getContent_int(const std::string & itemName){
     auto iter = m_confItemStore.find(itemName);
     if(iter != m_confItemStore.end()){
         return std::stoi(iter->second);
@@ -77,7 +77,7 @@ int ConfFileProcessor::getItemContent_int(const std::string & itemName){
     return -1;
 }
 
-int ConfFileProcessor::getItemContent_int(const std::string & itemName, const int def){
+int ConfFileProcessor::ngx_conf_getContent_int(const std::string & itemName, const int def){
     auto iter = m_confItemStore.find(itemName);
     if(iter != m_confItemStore.end()){
         return std::stoi(iter->second);
@@ -86,7 +86,7 @@ int ConfFileProcessor::getItemContent_int(const std::string & itemName, const in
     return def;
 }
 
-void ConfFileProcessor::trimTailSpace(char * string){ 
+void ConfFileProcessor::ngx_string_trim_tailSpace(char * string){ 
 	if(string == nullptr)   
 		return;   
 
@@ -97,7 +97,7 @@ void ConfFileProcessor::trimTailSpace(char * string){
     }
 }
 
-void ConfFileProcessor::trimHeadSpace(char * string){
+void ConfFileProcessor::ngx_string_trim_headSpace(char * string){
 	size_t len = strlen(string);
 	char * p_tmp = string;
 	if((*p_tmp) != ' ') //不是以空格开头

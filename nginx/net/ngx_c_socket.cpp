@@ -14,10 +14,7 @@
 Socket::Socket() : 
     m_portCount(0),
     m_epfd(-1),
-    m_connectionPool(nullptr)
-{
-    pthread_mutex_init(&m_msgQueMutex, NULL); // 初始化消息队列互斥量
-}
+    m_connectionPool(nullptr){}
 
 Socket::~Socket(){
     // 释放监听套接字
@@ -25,17 +22,11 @@ Socket::~Socket(){
         delete sock;
     }
     m_listenSokcetList.clear();
-
-    // 释放消息队列
-    ngx_msgQue_clear();
-
-    // 释放消息队列互斥量
-    pthread_mutex_destroy(&m_msgQueMutex);
 }
 
-bool Socket::ngx_sockets_init(){
+int Socket::ngx_sockets_init(){
     ConfFileProcessor * confProcess = ConfFileProcessor::getInstance();
-    m_portCount = confProcess->getItemContent_int("PortCount", NGX_PROT_COUNT);
+    m_portCount = confProcess->ngx_conf_getContent_int("PortCount", NGX_PROT_COUNT);
 
     int sockfd;
     struct sockaddr_in serv_addr;
@@ -51,7 +42,7 @@ bool Socket::ngx_sockets_init(){
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if(sockfd < 0){
             ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_open_listening_sockets()中执行socket()失败, i = %d", i);
-            return false;
+            return -1;
         }
 
         int reuseaddr = 1;
@@ -59,19 +50,19 @@ bool Socket::ngx_sockets_init(){
         if(ret < 0){
             ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_open_listening_sockets()中执行setsockopt(SO_REUSEADDR)失败, i = %d", i);
             close(sockfd);                                               
-            return false;
+            return -1;
         }
 
         ret = ngx_set_nonblocking(sockfd);
         if(ret < 0){
             ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_open_listening_sockets()中执行ngx_set_nonblocking()失败, i = %d", i);
             close(sockfd);                                               
-            return false;
+            return -1;
         }
 
         memset(tmp_str, 0, 100);
         sprintf(tmp_str, "Port%d", i);
-        port = confProcess->getItemContent_int(tmp_str);
+        port = confProcess->ngx_conf_getContent_int(tmp_str);
         if(port < 0){
             if(m_portCount == 1){
                 port = NGX_LISTEN_PORT;
@@ -79,7 +70,7 @@ bool Socket::ngx_sockets_init(){
             else{
                 ngx_log(NGX_LOG_FATAL, 0, "配置文件中没有提供Port%d", i);
                 close(sockfd);                                               
-                return false;
+                return -1;
             }
         }
 
@@ -89,14 +80,14 @@ bool Socket::ngx_sockets_init(){
         if(ret < 0){
             ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_open_listening_sockets()中执行bind()失败, i = %d", i);
             close(sockfd);                                               
-            return false;
+            return -1;
         }
 
         ret = listen(sockfd, NGX_LISTEN_BACKLOG);
         if(ret < 0){
             ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_open_listening_sockets()中执行listen()失败, i = %d", i);
             close(sockfd);                                               
-            return false;
+            return -1;
         }
 
         ngx_log(NGX_LOG_INFO, 0, "监听%d端口成功", port);
@@ -107,7 +98,7 @@ bool Socket::ngx_sockets_init(){
         m_listenSokcetList.push_back(sock);
     }
 
-    return true;
+    return 0;
 }
 
 void Socket::ngx_sockets_close(){

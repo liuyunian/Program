@@ -24,13 +24,13 @@ enum Process_type{
 // [default]是否采用守护进程方式运行
 #define NGX_IS_DAEMON 0
 
-/**
+/**********************************
  * socket & epoll
- */
-// [default]监听端口数目
+ **********************************/
+// [default] 监听端口数目
 #define NGX_PROT_COUNT 1
 
-// [default]监听端口
+// [default] 监听端口
 #define NGX_LISTEN_PORT 80
 
 #define NGX_LISTEN_BACKLOG 511
@@ -41,9 +41,9 @@ enum Process_type{
 // 一次从epoll对象中获取的最大事件数
 #define NGX_MAX_EVENTS 512
 
-/**
+/**********************************
  * 收发包
- */
+ **********************************/
 //数据包的最大长度
 #define PKT_MAX_LEN  10240
 
@@ -53,5 +53,11 @@ enum Recv_pkt_state{
     RECV_PKT_HEADER,
     RECV_PKT_BODY
 };
+
+/**********************************
+ * 线程池
+ **********************************/
+// [defautl] 线程池大小
+#define NGX_THREAD_NUM 10
 
 #endif // NGX_MACRO_H_

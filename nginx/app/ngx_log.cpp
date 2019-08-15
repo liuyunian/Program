@@ -32,14 +32,14 @@ static u_char * ngx_log_sprintfNum(u_char *, u_char *, uint64_t, u_char, int, ui
 
 void ngx_log_init(){
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
-    const char * fileName = confProcessor->getItemContent_str("LogFile");
+    const char * fileName = confProcessor->ngx_conf_getContent_str("LogFile");
     if(fileName == NULL){ // 配置文件中没有设置LogFile的值
         fileName = NGX_LOG_PATH;
     }
 
-    g_logInfor.log_level = confProcessor->getItemContent_int("LogLevel", NGX_LOG_LEVEL);
+    g_logInfor.log_level = confProcessor->ngx_conf_getContent_int("LogLevel", NGX_LOG_LEVEL);
 
-    if(confProcessor->getItemContent_int("Daemon", NGX_IS_DAEMON) == 1){
+    if(confProcessor->ngx_conf_getContent_int("Daemon", NGX_IS_DAEMON) == 1){
         g_logInfor.log_output = 0;
     }
     else{

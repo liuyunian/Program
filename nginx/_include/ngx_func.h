@@ -5,9 +5,9 @@
  * 设置标题
  * ngx_setTitle.cpp
  */
-void moveEnviron();
-void setTitle(const char * title);
-void freeEnviron();
+void ngx_move_environ();
+void ngx_set_title(const char * title);
+void ngx_free_environ();
 
 /**
  * 信号

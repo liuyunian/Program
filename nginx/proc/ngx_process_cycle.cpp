@@ -7,12 +7,11 @@
 #include "ngx_func.h"
 #include "ngx_global.h"
 #include "ngx_c_conf.h"
+#include "ngx_c_threadPool.h"
 
-static void ngx_start_worker_processes(int wp_num);
+static void ngx_worker_process_create(int wp_num);
 
 static void ngx_worker_process_cycle(int seq);
-
-static void ngx_worker_process_init(int seq);
 
 void ngx_master_process_cycle(){
     sigset_t set;
@@ -35,8 +34,8 @@ void ngx_master_process_cycle(){
     }
 
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
-    int wp_num = confProcessor->getItemContent_int("WorkProcess", NGX_WORKER_PROCESSES);
-    ngx_start_worker_processes(wp_num);
+    int wp_num = confProcessor->ngx_conf_getContent_int("WorkProcess", NGX_WORKER_PROCESSES);
+    ngx_worker_process_create(wp_num);
 
     sigemptyset(&set); // 清空信号集
 
@@ -48,11 +47,11 @@ void ngx_master_process_cycle(){
 }
 
 static void 
-ngx_start_worker_processes(int wp_num){
+ngx_worker_process_create(int wp_num){
     for(int i = 0; i < wp_num; ++ i){
         pid_t pid = fork();
         if(pid == -1){ // 创建失败
-            ngx_log(NGX_LOG_FATAL, errno, "ngx_start_worker_processes()中fork()创建子进程失败，num = %d", i);
+            ngx_log(NGX_LOG_FATAL, errno, "ngx_worker_process_create()中fork()创建子进程失败，num = %d", i);
         }
         else if(pid == 0){
             ngx_worker_process_cycle(i);
@@ -68,26 +67,70 @@ ngx_start_worker_processes(int wp_num){
 
 static void
 ngx_worker_process_cycle(int seq){
-    ngx_worker_process_init(seq);
-
+    // [1] 无关紧要
     g_procType = NGX_WORKER_PROCESS;
     setTitle("nginx: worker");
+
+    // [2] 解除屏蔽的信号
+    sigset_t set;
+    sigemptyset(&set);
+    ret = sigprocmask(SIG_SETMASK, &set, NULL);
+    if(ret < 0){
+        ngx_log(NGX_LOG_ERR, errno, "ngx_worker_process_init()中sigprocmask()失败!，num = %d", seq);
+        goto exit_label;
+    }
+
+    // [3] 初始化监听套接字，开始接受TCP连接
+    ret = g_sock.ngx_sockets_init();
+    if(ret < 0){
+        goto exit_label;
+    }
+
+    // [4] 创建线程池
+    ThreadPool * tp = ThreadPool::getInstance();
+    ret = tp->ngx_threadPool_create();
+    if(ret < 0){
+        // 关闭监听套接字
+        g_sock.ngx_sockets_close();
+        goto exit_label;
+    }
+
+    // [5] 初始化epoll
+    ret = g_sock.ngx_epoll_init();
+    if(ret < 0){
+        // 关闭监听套接字
+        g_sock.ngx_sockets_close();
+
+        // 线程池停止工作
+        ThreadPool * tp = ThreadPool::getInstance();
+        tp->ngx_threadPool_stop();
+
+        goto exit_label;
+    }
+
+    // ... 其他初始化
+
     ngx_log(NGX_LOG_INFO, 0, "nginx: worker %d 启动并开始运行......!", getpid());
 
-    for(;;){ // worker process进入工作循环
+    for(;;){ 
         // sleep(1);
        g_sock.ngx_epoll_getEvent(-1);
     }
-}
 
-static void 
-ngx_worker_process_init(int seqs){
-    sigset_t set;
-    sigemptyset(&set);
-    if(sigprocmask(SIG_SETMASK, &set, NULL) < 0){
-        ngx_log(NGX_LOG_ERR, errno, "ngx_worker_process_init()中sigprocmask()失败!");
-    }
+    // 关闭监听套接字
+    g_sock.ngx_sockets_close();
 
-    g_sock.ngx_epoll_init();
-    // 之后增加代码
+    // 线程池停止工作
+    ThreadPool * tp = ThreadPool::getInstance();
+    tp->ngx_threadPool_stop();
+
+
+exit_label:
+    // 释放设置标题时分配的内存
+    ngx_free_environ();
+
+    // 关闭日志文件
+    ngx_log_close();
+
+    exit(1);
 }

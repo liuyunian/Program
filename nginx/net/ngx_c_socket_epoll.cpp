@@ -13,7 +13,7 @@
 
 int Socket::ngx_epoll_init(){
     ConfFileProcessor * confProcess = ConfFileProcessor::getInstance();
-    int connectionSize = confProcess->getItemContent_int("WorkerConnections", NGX_WORKER_CONNECTIONS);
+    int connectionSize = confProcess->ngx_conf_getContent_int("WorkerConnections", NGX_WORKER_CONNECTIONS);
 
     // [1] 创建epoll对象
     m_epfd = epoll_create(connectionSize);

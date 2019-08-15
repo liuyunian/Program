@@ -8,8 +8,6 @@
 #include "ngx_c_socket.h"
 #include "ngx_global.h"
 
-static void freeSource();
-
 char ** g_argv;
 
 int g_procType;
@@ -19,33 +17,32 @@ struct LogInfor g_logInfor;
 Socket g_sock;
 
 int main(int argc, char * argv[]){
+    // 无关紧要的初始化
     g_argv = argv;
-    int exitCode = 0;
+    g_procType = NGX_MASTER_PROCESS;
 
     // 加载配置文件
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
-    if(!confProcessor->load("nginx.conf")){
+    if(!confProcessor->ngx_conf_load("nginx.conf")){
         printf("Fail to load %s, exit\n", "nginx.conf");
-        exitCode = 2;
-        goto exit_label; // 不能直接exit，还要释放资源
+        exit(1); // 不需要释放资源，直接退出，exit(0) == return 0;正常退出，exit(1)获知exit(-1)错误退出
     }
 
     // 初始化日志
     ngx_log_init();
 
-    // 初始化信号
-    if(ngx_signals_init() < 0){ // 如果信号初始化失败
-        exitCode = 1;
-        goto exit_label;
-    }
+    // 设置进程标题
+    ngx_move_environ();
+    ngx_set_title("nginx: master"); // 设置主进程标题
 
-    if(!g_sock.ngx_sockets_init()){
+    // 初始化信号
+    if(ngx_signals_init() < 0){
         exitCode = 1;
         goto exit_label;
     }
 
     // 是否以守护进程方式运行
-    if(confProcessor->getItemContent_int("Daemon", NGX_IS_DAEMON) == 1){
+    if(confProcessor->ngx_conf_getContent_int("Daemon", NGX_IS_DAEMON) == 1){
         int ret_daemon = ngx_create_daemon();
         if(ret_daemon < 0){
             exitCode = 1;
@@ -57,24 +54,18 @@ int main(int argc, char * argv[]){
         }
     }
 
-    // 设置父进程标题
-    moveEnviron();
-    g_procType = NGX_MASTER_PROCESS;
-    setTitle("nginx: master"); // 设置主进程标题
+
     ngx_log(NGX_LOG_INFO, 0, "nginx: master %d 启动并开始运行......!", getpid());
 
     // 进入master进程工作循环
     ngx_master_process_cycle();
 
 exit_label:
-    freeSource();
-    return exitCode;
-}
-
-static void freeSource(){
     // 释放设置标题时分配的内存
-    freeEnviron();
+    ngx_free_environ();
 
     // 关闭日志文件
     ngx_log_close();
+    
+    return exitCode;
 }

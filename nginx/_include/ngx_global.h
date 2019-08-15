@@ -5,7 +5,8 @@
 #include "ngx_c_socket.h" // Socket
 
 /**
- * 设置标题
+ * @brief 命令行参数
+ * 设置标题时需要用到
  */
 extern char ** g_argv;
 

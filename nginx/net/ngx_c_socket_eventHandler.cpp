@@ -8,6 +8,7 @@
 #include "ngx_log.h"
 #include "ngx_c_socket.h"
 #include "ngx_c_memoryPool.h"
+#include "ngx_c_threadPool.h"
 
 void Socket::ngx_event_accept(TCPConnection * c){
     struct sockaddr cliAddr;
@@ -197,7 +198,8 @@ void Socket::ngx_pkt_handle(TCPConnection * c){
     ngx_msgQue_push(c->recvBuffer);
 
     // [2] 触发业务逻辑
-    // ...后续增加
+    ThreadPool * tp = ThreadPool::getInstance();
+    tp->ngx_threadPool_call();
 
     // [3] 准备接收后续的数据
     c->recvBuffer = nullptr; // 对应的内存由消息队列接管
