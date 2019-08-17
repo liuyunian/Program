@@ -35,7 +35,7 @@ private:
      */
     struct ThreadItem{
         pthread_t tid;
-        bool isRunning = false;
+        std::atomic_bool isRunning = false;
     };
 
 public:
@@ -50,16 +50,10 @@ public:
 
     int ngx_threadPool_create();
 
-    // void ngx_threadPool_call();
-
     void ngx_threadPool_stop();
 
     // 消息队列
     void ngx_msgQue_push(uint8_t * msg);
-
-    // uint8_t * ngx_msgQue_pop();
-
-    void ngx_msgQue_clear();
 
 private:
     static void * ngx_thread_entryFunc(void * arg);
@@ -68,11 +62,11 @@ private:
     static pthread_mutex_t m_msgQueMutex; // 消息队列互斥量
     static pthread_cond_t m_cond; // 条件变量
     static std::atomic<bool> m_stop; // 线程池是否已经停止工作
-    static std:;atomic<int> m_runningNum; // 记录正在运行的线程数
+    static std::atomic<int> m_runningNum; // 记录正在运行的线程数
+    static std::list<uint8_t *> m_msgQueue; // 消息队列
 
-    // size_t m_threadNum; // 线程池中的线程数目
+    int m_threadNum; // 线程池中的线程数目
     std::vector<ThreadItem *> m_threadVec;
-    std::list<uint8_t *> m_msgQueue; // 消息队列
 };
 
 #endif // NGX_C_THREADPOOL_H_
