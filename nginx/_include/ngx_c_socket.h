@@ -1,10 +1,15 @@
+/**
+ * Socket类是通信功能的核心类(该类最终是否命名为Socket还在犹豫)
+ * Socket类作为父类存在，提供通信基本功能
+ * 子类继承该类之后，在子类中实现具体的业务逻辑
+*/
+
 #ifndef NGX_C_SOCKET_H_
 #define NGX_C_SOCKET_H_
 
 #include <vector>
 #include <list>
 
-// #include <pthread.h>
 #include <sys/epoll.h> // epoll_event
 
 #include "ngx_macro.h"
@@ -27,7 +32,8 @@ struct ListenSocket{
 
 struct PktHeader{
     uint16_t len; // 记录数据包的长度
-    uint16_t msgType; // 记录消息类型
+    uint16_t type; // 类型
+    int crc32; // 用于CRC32校验
     // ... 待扩展
 };
 
@@ -40,14 +46,14 @@ struct PktHeader{
  */
 struct MsgHeader{
     TCPConnection * c; // 连接对象
-    u_int64_t curSeq;  // 连接对象的序号，用于判断连接是否作废？？
+    u_int64_t curSeq;  // 连接对象的序号，用于判断连接是否作废
     // ...扩展
 };
 
 class Socket{
 public:
     Socket();
-    ~Socket();
+    virtual ~Socket(); // 父类中的析构函数一定要是虚函数
 
     int ngx_sockets_init(); // 打开监听套接字
 
@@ -74,6 +80,12 @@ public:
      */
     int ngx_epoll_getEvent(int timer);
 
+    /**
+     * @brief 处理从消息队列中拿到的消息
+     * 父类中声明为纯虚函数，子类中必须具体实现
+    */
+   virtual void ngx_msg_handle(uint8_t * msg) = 0; 
+
 private:
     // epoll事件回调
     void ngx_event_accept(TCPConnection * c);
@@ -82,10 +94,15 @@ private:
 
     void ngx_event_recv(TCPConnection * c);
 
-    // 处理接收数据
-    void ngx_pktHeader_handle(TCPConnection * c);
+    /**
+     * @brief 解析收到的包头信息
+    */
+    void ngx_pktHeader_parsing(TCPConnection * c);
 
-    void ngx_pkt_handle(TCPConnection * c);
+    /**
+     * @brief 处理接收到的完成的数据包
+    */
+    void ngx_packet_handle(TCPConnection * c);
 
 private:
     int m_portCount; // 监听端口的数目

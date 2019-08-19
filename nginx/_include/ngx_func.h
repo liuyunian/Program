@@ -33,4 +33,13 @@ int ngx_create_daemon();
  */
 int ngx_set_nonblocking(int sockfd);
 
+/**
+ * CRC32校验
+ * ndn_crc32.cpp
+*/
+void ngx_crc32_table_init();
+
+int ngx_crc32_get_value(unsigned char * buffer, uint32_t dwSize);
+
+
 #endif // NGX_FUNC_H_

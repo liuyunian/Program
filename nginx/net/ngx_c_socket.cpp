@@ -1,3 +1,9 @@
+/**
+ * Socket类是通信功能的核心类(该类最终是否命名为Socket还在犹豫)
+ * Socket类作为父类存在，提供通信基本功能
+ * 子类继承该类之后，在子类中实现具体的业务逻辑
+*/
+
 #include <string.h> // memset
 #include <errno.h> // errno
 #include <unistd.h> // close

@@ -125,7 +125,7 @@ void Socket::ngx_event_recv(TCPConnection * c){
     // 处理正确接收的情况，采用状态机
     if(c->curRecvPktState == RECV_PKT_HEADER){
         if(len == c->recvLength){ // 接收到了完整的包头
-            ngx_pktHeader_handle(c);
+            ngx_pktHeader_parsing(c);
         }
         else{
             c->recvIndex += len;
@@ -134,7 +134,7 @@ void Socket::ngx_event_recv(TCPConnection * c){
     }
     else if(c->curRecvPktState == RECV_PKT_BODY){
         if(len == c->recvLength){ // 接收到了完整的包体
-            ngx_pkt_handle(c);
+            ngx_packet_handle(c);
         }
         else{
             c->recvIndex += len;
@@ -146,7 +146,7 @@ void Socket::ngx_event_recv(TCPConnection * c){
     }
 }
 
-void Socket::ngx_pktHeader_handle(TCPConnection * c){
+void Socket::ngx_pktHeader_parsing(TCPConnection * c){
     uint16_t pktHd_len = static_cast<uint16_t>(sizeof(PktHeader));
 
     PktHeader * pktHd = (PktHeader *)(c->pktHeader);
@@ -184,7 +184,7 @@ void Socket::ngx_pktHeader_handle(TCPConnection * c){
     memcpy(buf, c->pktHeader, pktHd_len);
 
     if(pktLen < pktHd_len){ // 只有包头没有包体的情况，这种情况是允许的
-        ngx_pkt_handle(c);
+        ngx_packet_handle(c);
     }
     else{
         c->curRecvPktState = RECV_PKT_BODY;
@@ -193,15 +193,12 @@ void Socket::ngx_pktHeader_handle(TCPConnection * c){
     }
 }
 
-void Socket::ngx_pkt_handle(TCPConnection * c){
+void Socket::ngx_packet_handle(TCPConnection * c){
     // [1] 将接收到的完整的数据push到消息队列
-    ngx_msgQue_push(c->recvBuffer);
-
-    // [2] 触发业务逻辑
     ThreadPool * tp = ThreadPool::getInstance();
-    tp->ngx_threadPool_call();
+    tp->ngx_msgQue_push(c->recvBuffer);
 
-    // [3] 准备接收后续的数据
+    // [2] 准备接收后续的数据
     c->recvBuffer = nullptr; // 对应的内存由消息队列接管
     c->curRecvPktState = RECV_PKT_HEADER;
     c->recvIndex = c->pktHeader;

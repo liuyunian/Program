@@ -13,7 +13,7 @@ using ngx_event_handler = void (Socket::*)(TCPConnection *); // Socket成员函�
 struct TCPConnection{
     int sockfd = -1; // socket描述符
     unsigned instance:1 ; // 失效标志位
-    u_int64_t curSeq = 0; // ??
+    u_int64_t curSeq = 0; // 判断连接是否过期
     
     struct sockaddr cliAddr; // 客户端的地址信息
 
