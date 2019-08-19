@@ -8,6 +8,7 @@
 #define NGX_C_THREADPOOL_H_
 
 #include <vector>
+#include <list>
 #include <atomic>
 
 #include <stddef.h> // size_t

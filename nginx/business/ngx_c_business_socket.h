@@ -1,7 +1,7 @@
 #ifndef NGX_C_BUSINESS_SOCKET_H_
 #define NGX_C_BUSINESS_SOCKET_H_
 
-#include "ngx_c_socket.h"
+#include "net/ngx_c_socket.h"
 
 #pragma pack (1) // 1字节对齐
 

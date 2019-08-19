@@ -1,17 +1,21 @@
-﻿#include <unistd.h>
-#include <stdio.h>
+﻿#include <iostream>
+
+#include <unistd.h>
 
 #include "ngx_log.h"
 #include "ngx_c_conf.h"
-#include "ngx_func.h"
-#include "ngx_macro.h"
-#include "ngx_global.h"
+#include "_include/ngx_func.h"
+#include "_include/ngx_macro.h"
+#include "_include/ngx_global.h"
+#include "business/ngx_c_business_socket.h"
 
 char ** g_argv;
 
 int g_procType;
 
 struct LogInfor g_logInfor;
+
+BusinessSocket g_sock;
 
 int main(int argc, char * argv[]){
     // 无关紧要的初始化
@@ -22,7 +26,7 @@ int main(int argc, char * argv[]){
     // 加载配置文件
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
     if(!confProcessor->ngx_conf_load("nginx.conf")){
-        printf("Fail to load %s, exit\n", "nginx.conf");
+        std::cout << "Fail to load nginx.conf, exit" << std::endl;
         exit(1); // 不需要释放资源，直接退出，exit(0) == return 0;正常退出，exit(1)获知exit(-1)错误退出
     }
 
@@ -39,6 +43,11 @@ int main(int argc, char * argv[]){
         goto exit_label;
     }
 
+    if(g_sock.ngx_sockets_init()){
+        exitCode = 1;
+        goto exit_label;
+    }
+
     // 是否以守护进程方式运行
     if(confProcessor->ngx_conf_getContent_int("Daemon", NGX_IS_DAEMON) == 1){
         int ret_daemon = ngx_create_daemon();
@@ -46,12 +55,11 @@ int main(int argc, char * argv[]){
             exitCode = 1;
             goto exit_label;
         }
-        else if(ret_daemon == 1){
+        else if(ret_daemon == 1){ // 父进程从这退出
             exitCode = 0;
             goto exit_label;
         }
     }
-
 
     ngx_log(NGX_LOG_INFO, 0, "nginx: master %d 启动并开始运行......!", getpid());
 

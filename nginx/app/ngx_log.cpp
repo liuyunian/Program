@@ -10,9 +10,9 @@
 #include <sys/time.h> //gettimeofday
 
 #include "ngx_log.h"
-#include "ngx_macro.h"
-#include "ngx_global.h" // g_logInfor
 #include "ngx_c_conf.h" // ConfFileProcessor
+#include "_include/ngx_macro.h"
+#include "_include/ngx_global.h"
 
 static u_char err_levels[][20] = {
     {"FATAL"},
@@ -33,7 +33,7 @@ static u_char * ngx_log_sprintfNum(u_char *, u_char *, uint64_t, u_char, int, ui
 void ngx_log_init(){
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
     const char * fileName = confProcessor->ngx_conf_getContent_str("LogFile");
-    if(fileName == NULL){ // 配置文件中没有设置LogFile的值
+    if(fileName == nullptr){ // 配置文件中没有设置LogFile的值
         fileName = NGX_LOG_PATH;
     }
 

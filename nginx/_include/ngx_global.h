@@ -1,8 +1,8 @@
 #ifndef NGX_GLOBAL_H_
 #define NGX_GLOBAL_H_
 
-#include "ngx_log.h" // LogInfor
-#include "ngx_c_business_socket.h" // BusinessSocket
+#include "app/ngx_log.h" // LogInfor
+#include "business/ngx_c_business_socket.h" // BusinessSocket
 
 /**
  * @brief 命令行参数

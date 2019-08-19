@@ -4,7 +4,7 @@
 #include <string>
 
 #include "ngx_c_conf.h"
-#include "ngx_macro.h"
+#include "_include/ngx_macro.h"
 
 ConfFileProcessor * ConfFileProcessor::instance = nullptr;
 

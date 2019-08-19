@@ -3,10 +3,8 @@
 #include <sys/stat.h> // umask
 #include <errno.h> // errno
 
-extern int errno;
-
-#include "ngx_log.h"
-#include "ngx_func.h"
+#include "app/ngx_log.h"
+#include "_include/ngx_func.h"
 
 int ngx_create_daemon(){
     pid_t pid = fork();

@@ -41,7 +41,7 @@ int ngx_set_nonblocking(int sockfd);
 */
 void ngx_crc32_table_init();
 
-int ngx_crc32_get_value(unsigned char * buffer, uint32_t dwSize);
+int ngx_crc32_get_value(uint8_t * buffer, uint32_t dwSize);
 
 
 #endif // NGX_FUNC_H_

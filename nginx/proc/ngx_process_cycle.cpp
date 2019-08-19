@@ -2,15 +2,12 @@
 #include <errno.h> // errno
 #include <unistd.h> // fork
 
-#include "ngx_log.h"
-#include "ngx_macro.h"
-#include "ngx_func.h"
-#include "ngx_global.h"
-#include "ngx_c_conf.h"
-#include "ngx_c_threadPool.h"
-#include "ngx_c_business_socket.h"
-
-BusinessSocket g_sock;
+#include "app/ngx_log.h"
+#include "app/ngx_c_conf.h"
+#include "_include/ngx_macro.h"
+#include "_include/ngx_func.h"
+#include "_include/ngx_global.h"
+#include "net/ngx_c_threadPool.h"
 
 static void ngx_worker_process_create(int wp_num);
 
@@ -91,17 +88,19 @@ ngx_worker_process_cycle(int seq){
         exit(1);
     }
 
+    // 注意初始化监听套接字放在worker子进程中，只有一个worker进程可以初始化成功，其他worker进程会失败，错误信息如下：
+    // Socket::ngx_open_listening_sockets()中执行bind()失败, i = 1 (98: Address already in use)
     // [3] 初始化监听套接字，开始接受TCP连接
-    ret = g_sock.ngx_sockets_init();
-    if(ret < 0){
-        // 释放设置标题时分配的内存
-        ngx_free_environ();
+    // ret = g_sock.ngx_sockets_init();
+    // if(ret < 0){
+    //     // 释放设置标题时分配的内存
+    //     ngx_free_environ();
 
-        // 关闭日志文件
-        ngx_log_close();
+    //     // 关闭日志文件
+    //     ngx_log_close();
 
-        exit(1);
-    }
+    //     exit(1);
+    // }
 
     // [4] 创建线程池
     ThreadPool * tp = ThreadPool::getInstance();

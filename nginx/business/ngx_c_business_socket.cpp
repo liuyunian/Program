@@ -1,9 +1,9 @@
-
-#include "ngx_log.h"
-#include "ngx_func.h"
-#include "ngx_macro.h"
-#include "ngx_c_connectionPool.h"
 #include "ngx_c_business_socket.h"
+
+#include "_include/ngx_func.h"
+#include "_include/ngx_macro.h"
+#include "_include/ngx_global.h"
+#include "net/ngx_c_connectionPool.h"
 
 /**
  * 客户端发来的包中有类型字段，服务器端根据类型值确定该数据包如何处理

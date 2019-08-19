@@ -32,11 +32,12 @@ endif
 
 $(BIN):$(LINK_OBJ)
 	@echo "------------------------build $(VERSION) mode--------------------------------!!!"
-# $@目标文件的完整名称 $^ 所有不重复的依赖，以空格隔开
+# $@ 目标文件的完整名称 
+# $^ 所有不重复的依赖，以空格隔开
 	$(CC) -o $@ $^ $(CXXFLAGS)
 
 $(LINK_OBJ_DIR)/%.o:%.cpp
-	$(CC) -o $@ -c $(filter %.cpp,$^)
+	$(CC) -I $(BUILD_ROOT) -o $@ -c $(filter %.cpp,$^)
 
 $(DEP_DIR)/%.d:%.cpp
-	$(CC) -MM $^ >> $@
+	$(CC) -I $(BUILD_ROOT) -MM $^ >> $@

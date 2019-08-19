@@ -1,12 +1,13 @@
 #include <pthread.h> // pthread_create
 #include <unistd.h> // usleep
 
-#include "ngx_log.h"
-#include "ngx_macro.h"
-#include "ngx_global.h"
-#include "ngx_c_conf.h"
 #include "ngx_c_threadPool.h"
-#include "ngx_c_memoryPool.h"
+
+#include "app/ngx_log.h"
+#include "app/ngx_c_conf.h"
+#include "_include/ngx_macro.h"
+#include "_include/ngx_global.h"
+#include "misc/ngx_c_memoryPool.h"
 
 ThreadPool * ThreadPool::instance = nullptr;
 pthread_mutex_t ThreadPool::m_msgQueMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -92,6 +93,7 @@ void * ThreadPool::ngx_thread_entryFunc(void * arg){
         ++ m_runningNum;
 
         // ... 增加处理从消息队列中取出的消息的函数
+        g_sock.ngx_msg_handle(msg);
 
         mp->ngx_free_memory(msg);
         -- m_runningNum;
@@ -135,6 +137,8 @@ void ThreadPool::ngx_threadPool_stop(){
 }
 
 void ThreadPool::ngx_msgQue_push(uint8_t * msg){
+    ngx_log(NGX_LOG_DEBUG, 0, "执行了ngx_msgQue_push()函数");
+
     int err = -1; // 错误码
     err = pthread_mutex_lock(&m_msgQueMutex);
     if(err != 0){

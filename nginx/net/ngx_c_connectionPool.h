@@ -3,6 +3,8 @@
 
 #include <arpa/inet.h> // sockaddr_in
 
+#include "_include/ngx_macro.h"
+
 class Socket;
 struct TCPConnection;
 using ngx_event_handler = void (Socket::*)(TCPConnection *); // Socket成员函数指针

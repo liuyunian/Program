@@ -3,9 +3,9 @@
 #include <errno.h> // errno
 #include <sys/wait.h> // waitpid
 
-#include "ngx_func.h"
-#include "ngx_macro.h"
-#include "ngx_global.h"
+#include "_include/ngx_macro.h"
+#include "_include/ngx_func.h"
+#include "_include/ngx_global.h"
 
 static void ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext);
 

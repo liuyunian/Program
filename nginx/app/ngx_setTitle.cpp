@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ngx_global.h"
+#include "_include/ngx_global.h"
 
 extern char ** environ;
 char * new_environ = NULL;

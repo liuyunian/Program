@@ -1,10 +1,11 @@
 #include <stdint.h> // uintptr_t
 
-#include "ngx_macro.h"
-#include "ngx_func.h"
-#include "ngx_log.h"
 #include "ngx_c_connectionPool.h"
-#include "ngx_c_memoryPool.h"
+
+#include "app/ngx_log.h"
+#include "_include/ngx_macro.h"
+#include "_include/ngx_func.h"
+#include "misc/ngx_c_memoryPool.h"
 
 ConnectionPool::ConnectionPool(int size) : 
     m_poolSize(size),
