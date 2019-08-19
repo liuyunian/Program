@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <queue> 
+#include <atomic>
 
 #include <pthread.h>
 

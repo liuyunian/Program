@@ -2,7 +2,7 @@
 #define NGX_GLOBAL_H_
 
 #include "ngx_log.h" // LogInfor
-#include "ngx_c_socket.h" // Socket
+#include "ngx_c_business_socket.h" // BusinessSocket
 
 /**
  * @brief 命令行参数
@@ -23,6 +23,6 @@ extern int g_procType; // 用于记录当前是master还是worker
 /**
  * 网络
 */
-extern Socket g_sock;
+extern BusinessSocket g_sock;
 
 #endif

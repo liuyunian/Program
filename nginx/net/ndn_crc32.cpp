@@ -2,7 +2,7 @@
  * CRC校验算法函数
  * 感觉没有必要封装成类
 */
-#include <stdint.h>
+#include <stdint.h> // uint32_t
 
 static uint32_t crc32_table[256];
 
@@ -13,15 +13,15 @@ void ngx_crc32_table_init(){
     uint32_t ulPolynomial = 0x04c11db7;
 
 	// 256 values representing ASCII character codes.
-	for(int i = 0; i <= 0xFF; ++ i)
-	{
-		crc32_table[i]=Reflect(i, 8) << 24;
+	for(int i = 0; i <= 0xFF; ++ i){
+		crc32_table[i]=ngx_crc32_reflect(i, 8) << 24;
         
 		for(int j = 0; j < 8; j++){
 			crc32_table[i] = (crc32_table[i] << 1) ^ (crc32_table[i] & (1 << 31) ? ulPolynomial : 0);
         }
 
-		crc32_table[i] = Reflect(crc32_table[i], 32);
+		crc32_table[i] = ngx_crc32_reflect(crc32_table[i], 32);
+	}
 }
 
 int ngx_crc32_reflect(uint32_t ref, char ch){

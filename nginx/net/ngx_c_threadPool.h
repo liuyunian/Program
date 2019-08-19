@@ -8,6 +8,7 @@
 #define NGX_C_THREADPOOL_H_
 
 #include <vector>
+#include <atomic>
 
 #include <stddef.h> // size_t
 #include <pthread.h> // pthread_t
@@ -35,7 +36,9 @@ private:
      */
     struct ThreadItem{
         pthread_t tid;
-        std::atomic_bool isRunning = false;
+        std::atomic<bool> isRunning;
+
+        ThreadItem() : isRunning(false){}
     };
 
 public:

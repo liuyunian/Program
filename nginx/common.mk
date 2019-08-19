@@ -1,5 +1,4 @@
 ifeq ($(DEBUG),true)
-
 CC = g++ -g
 VERSION = debug
 else
@@ -33,10 +32,11 @@ endif
 
 $(BIN):$(LINK_OBJ)
 	@echo "------------------------build $(VERSION) mode--------------------------------!!!"
+# $@目标文件的完整名称 $^ 所有不重复的依赖，以空格隔开
 	$(CC) -o $@ $^ $(CXXFLAGS)
 
 $(LINK_OBJ_DIR)/%.o:%.cpp
-	$(CC) -I $(INCLUDE_PATH) -o $@ -c $(filter %.cpp,$^)
+	$(CC) -o $@ -c $(filter %.cpp,$^)
 
 $(DEP_DIR)/%.d:%.cpp
-	$(CC) -I $(INCLUDE_PATH) -MM $^ >> $@
+	$(CC) -MM $^ >> $@

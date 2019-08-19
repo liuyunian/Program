@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include <unistd.h>
+#include <pthread.h>
 
 #include "threadpool_pthread.h"
 

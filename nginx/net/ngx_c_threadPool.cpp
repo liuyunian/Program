@@ -11,9 +11,9 @@
 ThreadPool * ThreadPool::instance = nullptr;
 pthread_mutex_t ThreadPool::m_msgQueMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t ThreadPool::m_cond = PTHREAD_COND_INITIALIZER;
-std::atomic<bool> ThreadPool::m_stop = false;
-std::atomic<int> ThreadPool::m_runningNum = 0;
-std::list<uint8_t *> m_msgQueue;
+std::atomic<bool> ThreadPool::m_stop (false);
+std::atomic<int> ThreadPool::m_runningNum(0);
+std::list<uint8_t *> ThreadPool::m_msgQueue;
 
 ThreadPool::ThreadPool() : m_threadNum(0){}
 

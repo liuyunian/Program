@@ -5,7 +5,6 @@
 #include "ngx_c_conf.h"
 #include "ngx_func.h"
 #include "ngx_macro.h"
-#include "ngx_c_socket.h"
 #include "ngx_global.h"
 
 char ** g_argv;
@@ -14,10 +13,9 @@ int g_procType;
 
 struct LogInfor g_logInfor;
 
-Socket g_sock;
-
 int main(int argc, char * argv[]){
     // 无关紧要的初始化
+    int exitCode = 0;
     g_argv = argv;
     g_procType = NGX_MASTER_PROCESS;
 

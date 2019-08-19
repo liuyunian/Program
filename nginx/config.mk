@@ -2,14 +2,14 @@
 export BUILD_ROOT = $(shell pwd)
 
 #定义头文件的路径变量
-export INCLUDE_PATH = $(BUILD_ROOT)/_include
+export INCLUDE_PATH = $(BUILD_ROOT)/_include\
 
 #定义我们要编译的目录
 BUILD_DIR = $(BUILD_ROOT)/signal/ \
 			$(BUILD_ROOT)/proc/ \
 			$(BUILD_ROOT)/net/ \
 			$(BUILD_ROOT)/misc/ \
-			$(BUILD_ROOT)/bussiness/ \
+			$(BUILD_ROOT)/business/ \
 			$(BUILD_ROOT)/app/
 
 #编译时是否生成调试信息。GNU调试器可以利用该信息

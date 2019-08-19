@@ -1,6 +1,8 @@
 ﻿#ifndef NGX_FUNC_H_
 #define NGX_FUNC_H_
 
+#include <stdint.h> // uint32_t
+
 /**
  * 设置标题
  * ngx_setTitle.cpp

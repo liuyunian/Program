@@ -8,6 +8,9 @@
 #include "ngx_global.h"
 #include "ngx_c_conf.h"
 #include "ngx_c_threadPool.h"
+#include "ngx_c_business_socket.h"
+
+BusinessSocket g_sock;
 
 static void ngx_worker_process_create(int wp_num);
 
@@ -68,8 +71,9 @@ ngx_worker_process_create(int wp_num){
 static void
 ngx_worker_process_cycle(int seq){
     // [1] 无关紧要
+    int ret = 0; // 记录返回值
     g_procType = NGX_WORKER_PROCESS;
-    setTitle("nginx: worker");
+    ngx_set_title("nginx: worker");
 
     // [2] 解除屏蔽的信号
     sigset_t set;
@@ -77,13 +81,26 @@ ngx_worker_process_cycle(int seq){
     ret = sigprocmask(SIG_SETMASK, &set, NULL);
     if(ret < 0){
         ngx_log(NGX_LOG_ERR, errno, "ngx_worker_process_init()中sigprocmask()失败!，num = %d", seq);
-        goto exit_label;
+
+        // 释放设置标题时分配的内存
+        ngx_free_environ();
+
+        // 关闭日志文件
+        ngx_log_close();
+
+        exit(1);
     }
 
     // [3] 初始化监听套接字，开始接受TCP连接
     ret = g_sock.ngx_sockets_init();
     if(ret < 0){
-        goto exit_label;
+        // 释放设置标题时分配的内存
+        ngx_free_environ();
+
+        // 关闭日志文件
+        ngx_log_close();
+
+        exit(1);
     }
 
     // [4] 创建线程池
@@ -92,7 +109,14 @@ ngx_worker_process_cycle(int seq){
     if(ret < 0){
         // 关闭监听套接字
         g_sock.ngx_sockets_close();
-        goto exit_label;
+
+        // 释放设置标题时分配的内存
+        ngx_free_environ();
+
+        // 关闭日志文件
+        ngx_log_close();
+
+        exit(1);
     }
 
     // [5] 初始化epoll
@@ -102,10 +126,15 @@ ngx_worker_process_cycle(int seq){
         g_sock.ngx_sockets_close();
 
         // 线程池停止工作
-        ThreadPool * tp = ThreadPool::getInstance();
         tp->ngx_threadPool_stop();
 
-        goto exit_label;
+        // 释放设置标题时分配的内存
+        ngx_free_environ();
+
+        // 关闭日志文件
+        ngx_log_close();
+
+        exit(1);
     }
 
     // ... 其他初始化
@@ -121,16 +150,11 @@ ngx_worker_process_cycle(int seq){
     g_sock.ngx_sockets_close();
 
     // 线程池停止工作
-    ThreadPool * tp = ThreadPool::getInstance();
     tp->ngx_threadPool_stop();
 
-
-exit_label:
     // 释放设置标题时分配的内存
     ngx_free_environ();
 
     // 关闭日志文件
     ngx_log_close();
-
-    exit(1);
 }

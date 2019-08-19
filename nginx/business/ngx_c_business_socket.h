@@ -34,10 +34,9 @@ public:
 
     virtual void ngx_msg_handle(uint8_t * msg);
 
-private:
     void ngx_bussiness_register(TCPConnection *, MsgHeader *, uint8_t *, uint16_t);
 
     void ngx_bussiness_login(TCPConnection *, MsgHeader *, uint8_t *, uint16_t);
-}
+};
 
 #endif // NGX_C_BUSINESS_SOCKET_H_

@@ -1,5 +1,6 @@
 
 #include "ngx_log.h"
+#include "ngx_func.h"
 #include "ngx_macro.h"
 #include "ngx_c_connectionPool.h"
 #include "ngx_c_business_socket.h"
@@ -10,7 +11,7 @@
  * 比起if语句判断，这种方式更加高效，代码可读性更高
  * 这种思路就要求将具体的处理函数统一格式，这样才可以放入数组
 */
-using handler = void (Business::*)(
+typedef void (BusinessSocket:: * handler)(
     TCPConnection * c,      // TCP连接对象
     MsgHeader * msgHeader,  // 消息头
     uint8_t * pktBody,      // 包体
@@ -27,21 +28,21 @@ static const handler typeHandlers[] = {
     &BusinessSocket::ngx_bussiness_login
 };
 
-static const int maxValidType = sizeof(typeHandlers / sizeof(handler)); // 可以进行处理的最大有效类型
-
-BusinessSocket::BusinessSocket(){} // 会去调用父类的默认构造函数
+BusinessSocket::BusinessSocket(){}
 
 BusinessSocket::~BusinessSocket(){}
+
+static const int maxValidType = sizeof(typeHandlers) / sizeof(handler); // 可以进行处理的最大有效类型
 
 void BusinessSocket::ngx_msg_handle(uint8_t * msg){
     const int PKT_HEADER_SZ = sizeof(PktHeader);
     const int MSG_HEADER_SZ = sizeof(MsgHeader);
 
     MsgHeader * msgHeader = (MsgHeader *)msg;
-    TCPConnection * c = msg->c;
+    TCPConnection * c = msgHeader->c;
 
     // 判断该消息是否过期，消息在消息队列中提留时，如果该消息对应的连接断开，那么该消息就过期了，不进行处理
-    if(c->curSeq ！= msg->curSeq){
+    if(c->curSeq != msgHeader->curSeq){
         return;
     }
 
