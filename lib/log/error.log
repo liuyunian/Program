@@ -1,0 +1,15 @@
+2019/08/11 11:04:01 [INFO] 21477: hello world, 10
+2019/08/11 11:04:09 [INFO] 21498: hello world, 10
+2019/08/11 11:04:10 [INFO] 21499: hello world, 10
+2019/08/11 11:04:11 [INFO] 21500: hello world, 10
+2019/08/11 11:04:12 [INFO] 21501: hello world, 10
+2019/08/11 11:05:40 [INFO] 21560: hello world, 10
+2019/08/11 11:05:42 [INFO] 21564: hello world, 10
+2019/08/11 11:09:04 [INFO] 21667: hello world, 10
+2019/08/11 11:09:04 [FATAL] 21667: hello world, 10 (2: No such file or directory)
+2019/08/11 11:09:04 [ERROR] 21667: hello world, 10
+2019/08/11 11:09:04 [WARN] 21667: hello world, 10
+2019/08/11 11:33:04 [INFO] 22023: hello world, 10
+2019/08/11 11:33:04 [FATAL] 22023: hello world, 10 (2: No such file or directory)
+2019/08/11 11:33:04 [ERROR] 22023: hello world, 10
+2019/08/11 11:33:04 [WARN] 22023: hello world, 10

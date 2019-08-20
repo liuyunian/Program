@@ -62,16 +62,14 @@ public:
     int ngx_epoll_init();
 
     /**
-     * @brief 向epoll对象添加事件
+     * @brief 操作epoll对象，对事件进行增、删、改
      * @param sockfd socket描述符
-     * @param r_event标识是否是读事件，0不是，1是
-     * @param w_event标识是否是写事件，0不是，1是
-     * @param otherFlag其他标记
-     * @param eventType事件类型，epoll_ctl中的参数op
+     * @param operation要进行的动作，epoll_ctl中的参数op -- EPOLL_CTL_ADD、EPOLL_CTL_MOD、EPOLL_CTL_DEL
+     * @param eventType事件类型 -- EPOLLIN读事件、EPOLLRDHUP挂起事件
      * @param c表示一个连接
      * @return 执行成功返回0， 否则返回-1
      */
-    int ngx_epoll_addEvent(int sockfd, int r_event, int w_event, uint32_t otherFlags, uint32_t eventType, TCPConnection * c);
+    int ngx_epoll_operateEvent(int sockfd, uint32_t operation, uint32_t eventType, TCPConnection * c);
 
     /**
      * @brief 从epoll对象中获取发生的事件
