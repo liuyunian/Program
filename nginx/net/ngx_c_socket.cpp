@@ -58,14 +58,14 @@ int Socket::ngx_sockets_init(){
         }
 
         int reuseaddr = 1;
-        ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&reuseaddr, sizeof(reuseaddr));
+        ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&reuseaddr, sizeof(reuseaddr)); // 设置地址可以复用
         if(ret < 0){
             ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_open_listening_sockets()中执行setsockopt(SO_REUSEADDR)失败, i = %d", i);
             close(sockfd);                                               
             return -1;
         }
 
-        ret = ngx_set_nonblocking(sockfd);
+        ret = ngx_set_nonblocking(sockfd); // 将socket设置为非阻塞
         if(ret < 0){
             ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_open_listening_sockets()中执行ngx_set_nonblocking()失败, i = %d", i);
             close(sockfd);                                               
@@ -171,11 +171,12 @@ int Socket::ngx_epoll_operateEvent(int sockfd, uint32_t operation, uint32_t even
         // ... 待扩展
     }
     else{ // 无效的操作
+        ngx_log(NGX_LOG_ERR, 0, "Socket::ngx_epoll_operateEvent()参数operation没有对应的操作");
         return -1;
     }
 
     if(epoll_ctl(m_epfd, operation, sockfd, &et) < 0){
-        ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_epoll_operateEvent()中执行epoll_ctl()失败");
+        ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_epoll_operateEvent()中执行epoll_ctl()失败");
         return -1;
     }
 
@@ -185,25 +186,24 @@ int Socket::ngx_epoll_operateEvent(int sockfd, uint32_t operation, uint32_t even
 int Socket::ngx_epoll_getEvent(int timer){
     int events = epoll_wait(m_epfd, m_events, NGX_MAX_EVENTS, timer);
     if(events < 0){ // 表示出错
-        /**
-         * 通过判断errno来进行不同的异常处理
-         * 
         if(errno == EINTR){ // 信号中断错误
-            ngx_log(NGX_LOG_INFO, errno, "Socket::ngx_epoll_processEvent()中因信号中断导致执行epoll_wait()失败");
-            return 0; // 这种错误算作正常情况
+            /**
+             * 在等待事件发生过程中，被信号中断，这是经常发生的，再次等待即可
+             * 处理方式：函数直接返回，因为返回之后是worker进程的工作循环，会再次调用该函数再次等待事件发生
+            */
+            return 0;
         }
         else{
-            ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_epoll_processEvent()中执行epoll_wait()失败");
+            /**
+             * 其他错误
+            */
+            ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_epoll_getEvent()中执行epoll_wait()失败");
             return -1;
         }
-        */
-
-        ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_epoll_processEvent()中执行epoll_wait()失败");
-        return -1;
     }
     else if(events == 0){ // 0个事件发生
         if(timer == -1){ // timer等于-1时会一直阻塞，直到事件发生，此时events不可能为0
-            ngx_log(NGX_LOG_ERR, 0, "Socket::ngx_epoll_processEvent()中epoll_wait()没超时却没返回任何事件");
+            ngx_log(NGX_LOG_ERR, 0, "Socket::ngx_epoll_getEvent()中epoll_wait()没超时却没返回任何事件");
             return -1;
         }
 
@@ -215,33 +215,81 @@ int Socket::ngx_epoll_getEvent(int timer){
     uintptr_t validFlag;
     uint32_t eventType;
     for(int i = 0; i < events; ++ i){
-        c = m_events[i].data.ptr;
-
-        validFlag = (uintptr_t) c & 1;
-        c = (TCPConnection *) ((uintptr_t)c & (uintptr_t) ~1);
+        validFlag = (uintptr_t) (m_events[i].data.ptr) & 1;
+        c = (TCPConnection *) ((uintptr_t)(m_events[i].data.ptr) & (uintptr_t) ~1);
 
         /**
          * 事件过期原因分析
+         * 由于客户端随时可能退出，而退出还分为正常退出和非正常退出：
+         *      正常退出：客户端调用close关闭套接字，此时协议栈会进行四次回收
+         *      非正常退出：客户端进程直接关闭
          * 
+         * 三次握手之后，在服务器端accept之前客户端正常退出或者非正常退出 -- 服务器端如何知道？？ 调用accept()函数出错，errno为ECONNABORTED
+         * 
+         * 传输数据过程中，客户端正常退出 -- 服务器端如何知道？？ 调用accept()返回值为0
+         * 传输数据过程中，客户端非正常退出 -- 服务器端如何知道？？ 调用accept()出错，errno为ECONNABORTED
+         * 
+         * 客户端与服务器端的连接断开之后的，客户端的事件就属于过期事件
+         * 比如：m_events[]中有两个事件，可能吗？
+         * 事件1：客户端A关闭了连接
+         * 事件2：收到了客户端A所发来的数据
+         * 这种情况下，事件2就是一个过期事件，对该事件的处理是没有意义的，所以要过滤掉该类过期事件，也就是通过如下逻辑
         */
-        if(c->sockfd == -1 || c->validFlag != validFlag){ // 表示该事件是过期事件
-            ngx_log(NGX_LOG_DEBUG, 0, "Socket::ngx_epoll_processEvent()中遇到了过期事件");
-            continue; // 对于过期事件不予处理
+        if(c->sockfd == -1){
+            /**
+             * 关闭连接时，在ngx_event_close()函数中会将c->sockfd置为-1
+             * 这样在这检测该事件所属的TCP连接对应的sockfd是否为-1，如果为-1，那么表明TCP连接直接已经断开了，该事件是一个过期事件
+            */
+            ngx_log(NGX_LOG_DEBUG, 0, "Socket::ngx_epoll_getEvent()中遇到了过期事件");
+            continue;
+        }
+
+        if(c->validFlag != validFlag){ // 表示该事件是过期事件
+            /**
+             * 这里是对过期事件进一步过滤
+             * 对于下面这种情况，上面没法过滤
+             * m_events[]中有三个事件
+             * 事件1：客户端A关闭了连接（连接对应的连接池中的TCPConnection对象被回收）
+             * 事件2：客户端B连入服务器，采用的sockfd和TCPConnection对象都和客户端A相同（只有sockfd一样才会出现在同一个事件队列中）
+             * 事件3：收到了客户端A所发来的数据
+             * 
+             * 这种情况很少见，且不说sockfd相同的可能性，采用相同的TCP对象的可能性也很小
+             * 因为每次回收的连接对象都是放在空闲连接队列的末尾的，如果不是连接池中的可用连接过少，短时间内复用两个连接的可能性很小
+             * 所以这种情况在文件描述符资源和连接池资源快耗尽是可能会出现
+            */
+
+            ngx_log(NGX_LOG_DEBUG, 0, "Socket::ngx_epoll_getEvent()中遇到了过期事件");
+            continue;
         }
 
         // 开始处理正常的事件
         eventType = m_events[i].events; // 事件类型
-        if(eventType & (EPOLLERR | EPOLLHUP)){ // 错误类型
+        if(eventType & (EPOLLERR | EPOLLHUP)){
+            /**
+             * 这种情况是什么意思
+             * 为什么要这样处理呢？
+            */
             eventType |= EPOLLIN | EPOLLOUT; // 增加读写标记
         }
-
-        if(eventType & EPOLLIN){        // 读事件，两种情况：新客户端连入事件；已连接的客户端发送数据事件
-            (this->*(c->r_handler))(c); // 如果是新客户端连接事件，那么执行ngx_event_accept(c);
-                                        // 如果是已连接的客户端发送数据事件，那么执行ngx_event_recv(c)
+        else if(eventType & EPOLLIN){
+            /**
+             * 读事件，发生读事件有两种情况
+             * 监听套接字：新客户端发起连接 -- 执行ngx_event_accept(c);
+             * 连接套接字：客户端发送数据 -- 执行ngx_event_recv(c);
+            */
+            
+            (this->*(c->r_handler))(c);
         }
+        else if(eventType & EPOLLOUT){ // 写事件
+            /**
+             * 写事假
+            */
 
-        if(eventType & EPOLLOUT){ // 写事件
-            //后续增加...
+            // ... 后续增加
+        }
+        else{
+            ngx_log(NGX_LOG_ERR, 0, "Socket::ngx_epoll_getEvent()中遇到了未知事件类型");
+            return -1;
         }
     }
 
@@ -254,14 +302,14 @@ int Socket::ngx_epoll_getEvent(int timer){
 void Socket::ngx_event_accept(TCPConnection * c){
     struct sockaddr cliAddr;
     socklen_t addrlen;
-    int errnoCp; // 拷贝errno
-    int sockfd; // TCP连接对应的socket描述符
-    int accept4_flag; // 标记是否使用accept4，accept4函数是linux特有的扩展函数
-    TCPConnection * newConnection; // 与新连接绑定
+    int errnoCp;                    // 拷贝errno
+    int sockfd;                     // TCP连接对应的socket描述符
+    bool accept4Flag = true;                // 标记是否使用accept4，accept4函数是linux特有的扩展函数
+    TCPConnection * newConnection;  // 与新连接绑定
 
     addrlen = sizeof(struct sockaddr);
     while(1){
-        if(accept4_flag){
+        if(accept4Flag){
             sockfd = accept4(c->sockfd, &cliAddr, &addrlen, SOCK_NONBLOCK);
         }
         else{
@@ -270,29 +318,54 @@ void Socket::ngx_event_accept(TCPConnection * c){
 
         if(sockfd == -1){ // 发生了错误
             errnoCp = errno;
-            if(accept4_flag && errnoCp == ENOSYS){ // 不支持accept4
-                accept4_flag = 0;
+
+            /**
+             * 根据errno值进行异常处理
+             */
+            if(errnoCp == ENOSYS && accept4Flag){ // 不支持accept4
+                accept4Flag = false;
                 continue;
             }
+            // else if(errnoCp == EAGAIN | errnoCp == EWOULDBLOCK){
+                /**
+                 * 套接字标记为非阻塞并且没有连接等待接受
+                 * 这种情况应该不会发生，因为这个事件被触发表明一定会有连接等待接受
+                */
+            // }
+            else if(errnoCp == ECONNABORTED){
+                /**
+                 * 三次握手完成之后，客户端关闭套接字，向服务器端发送了一个RST报文段，此时accpet产生错误，错误码为ECONNABORTED
+                 * 处理方式：由于连接已经无效，所以此次触发事件也就无效了，return返回
+                */
 
-            if(errnoCp == EAGAIN){ // accept()没准备好，这个EAGAIN错误和EWOULDBLOCK是一样的
-                //如何处理...
+                return;
             }
+            else if(errnoCp == EMFILE || errnoCp == ENFILE){
+                /**
+                 * EMFILE -- 进程文件描述符用尽
+                 * ENFILE -- 达到操作系统允许打开文件个数的全局上线
+                 * 处理方式：修改操作系统的配置信息
+                */
 
-            if(errnoCp == ECONNABORTED){ // 对方意外关闭套接字
                 //如何处理...
-            }
 
-            if(errnoCp == EMFILE || errnoCp == ENFILE){ // EMFILE进程文件描述符用尽，ENFILE??
-                //如何处理...
+                ngx_log(NGX_LOG_ERR, errnoCp, "ngx_event_accpet()函数中执行accept()函数失败");
+                return;
             }
-
-            ngx_log(NGX_LOG_FATAL, errnoCp, "ngx_event_accpet()函数中执行accept()函数失败");
-            return;
+            else{
+                /**
+                 * 其他错误
+                 * EBADF: 描述符无效
+                 * ENOBUFS/ENOMEM: 没有足够的内存
+                 * ...
+                */
+                ngx_log(NGX_LOG_FATAL, errnoCp, "ngx_event_accpet()函数中执行accept()函数失败");
+                return;
+            }
         }
 
         // 处理accept成功的情况
-        if(!accept4_flag){
+        if(!accept4Flag){
             if(ngx_set_nonblocking(sockfd) < 0){
                 ngx_log(NGX_LOG_ERR, errno, "ngx_event_accpet()中执行ngx_set_nonblocking()失败");
                 close(sockfd);                                             
@@ -305,16 +378,27 @@ void Socket::ngx_event_accept(TCPConnection * c){
             close(sockfd);
             return;
         }
+
         // 需判断是否超过最大允许的连接数...
 
-        memcpy(&newConnection->cliAddr, &cliAddr, addrlen);
-        newConnection->w_ready = 1; // 已准备好写数据
+        // memcpy(&newConnection->cliAddr, &cliAddr, addrlen);
+        // newConnection->w_ready = 1; // 已准备好写数据
         newConnection->r_handler = &Socket::ngx_event_recv;
         newConnection->curRecvPktState = RECV_PKT_HEADER; // 收包状态处于准备接收包头状态
         newConnection->recvIndex = newConnection->pktHeader;
         newConnection->recvLength = sizeof(PktHeader);
         
-        if(ngx_epoll_operateEvent(sockfd, EPOLL_CTL_ADD, newConnection) < 0){ // LT模式
+        if(ngx_epoll_operateEvent(sockfd, EPOLL_CTL_ADD, EPOLLIN|EPOLLRDHUP, newConnection) < 0){ // LT模式
+            /**
+             * 向epoll对象添加事件出错，出错的原因是epoll_ctl()函数出错
+             * 虽然这个地方不易出错，但是对于这样的错误处理方式是否不妥
+             * 该连接已经被accept,所以之后是不会再触发该事件了，那么这里一旦返回，那么此次连接将不可能进行数据的收发
+             * 猜测客户端应该发现已经连接上了服务器，但是没法进行数据收发，那么客户端可能要采取一定的措施发现这个问题
+             * 
+             * 应该如何处理呢？
+             * 多次尝试epoll_ctl？？？
+            */
+
             ngx_event_close(newConnection);
             return;
         }
@@ -325,7 +409,7 @@ void Socket::ngx_event_accept(TCPConnection * c){
 
 void Socket::ngx_event_close(TCPConnection * c){
     close(c->sockfd);
-    c->sockfd = -1; // 表征该连接已过期
+    c->sockfd = -1; // 使用sockfd判断连接是否已过期
     m_connectionPool->ngx_free_connection(c);
 }
 
@@ -334,30 +418,42 @@ void Socket::ngx_event_recv(TCPConnection * c){
 
     ssize_t len = recv(c->sockfd, c->recvIndex, c->recvLength, 0); // recv()系统调用，这里flags设置为0，作用同read()
 
-    if(len < 0){ // 出错，通过errno判断错误类型
-        ngx_log(NGX_LOG_ERR, errno, "ngx_event_recv()函数中调用recv()函数接收数据错误");
-
+    if(len < 0){
         int errnoCp = errno;
-        if(errnoCp == EAGAIN || errnoCp == EWOULDBLOCK){ // 表示没有拿到数据
-            /*
-            一般只有在ET模式下才会出现该错误
-            该错误类型常出现在ET模式下，ET模式下从缓存区中拿数据是要在循环中不断的调用recv()
-            当recv()函数返回-1，并且errno = EAGAIN || EWOULDBLOCK，表示缓冲区中没有数据了，此次接收数据结束
-             */
+        // if(errnoCp == EAGAIN || errnoCp == EWOULDBLOCK){
+            /**
+             * 表示没有从接收缓冲区中拿到数据
+             * 因为epoll工作在LT模式下，触发该事件表明缓冲区中有数据，所以这个错误不会发生
+             * 只有在ET模式下才会出现该错误，ET模式下从缓存区中拿数据是要在循环中不断的调用recv()，当recv()函数返回-1，并且errno = EAGAIN || EWOULDBLOCK，表示缓冲区中没有数据了，此次接收数据结束
+            */
+        // }
+
+        if(errnoCp == EINTR){
+            /**
+             * 表示函数执行过程中被信号打断
+             * 一般函数阻塞等待的过程中才发生该错误，这里sockfd标记为非阻塞，所以recv()函数也是非阻塞的，可能发生该错误吗？
+             * 处理方式：直接return即可，因为LT模式下，该事件还会被再次触发
+            */
             return;
         }
 
-        if(errnoCp == EINTR){ // 什么错误？？
-            // ... 如何处理
-            return;
-        }
+        else if(errnoCp == ECONNRESET){ // 客户端没有正常的关闭连接，此时服务器端也应关闭连接
+            /**
+             * 发送数据阶段，客户端非正常关闭连接，此时服务器也应关闭连接
+             * 处理方式：关闭连接并返回 
+            */
 
-        if(errnoCp == ECONNRESET){ // 客户端没有正常的关闭连接，此时服务器端也应关闭连接
             ngx_event_close(c);
             return;
         }
+        else{
+            /**
+             * ... 其他错误等待后续完善
+            */
 
-        // ... 其他错误等待后续完善
+            ngx_log(NGX_LOG_ERR, errno, "ngx_event_recv()函数中调用recv()函数接收数据错误");
+            return;
+        }
     }
 
     if(len == 0){ // 表示客户端关闭连接，服务器端也应关闭连接
@@ -386,6 +482,7 @@ void Socket::ngx_event_recv(TCPConnection * c){
     }
     else{
         ngx_log(NGX_LOG_ERR, 0, "ngx_event_recv()函数中TCP连接对象c处于无效的收包状态，%d", c->curRecvPktState);
+        return;
     }
 }
 

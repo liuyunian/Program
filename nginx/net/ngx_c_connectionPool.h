@@ -1,6 +1,7 @@
 #ifndef NGX_C_CONNECTIONPOOL_H_
 #define NGX_C_CONNECTIONPOOL_H_
 
+#include <pthread.h> // pthread_mutex_t
 #include <arpa/inet.h> // sockaddr_in
 
 #include "_include/ngx_macro.h"
@@ -17,12 +18,12 @@ struct TCPConnection{
     unsigned validFlag:1 ;   // 失效标志位
     u_int64_t curSeq = 0;   // 判断连接是否过期
     
-    struct sockaddr cliAddr; // 客户端的地址信息
+    // struct sockaddr cliAddr; // 客户端的地址信息
 
     // uint8_t r_ready;                     // 读准备好标记 -- 0：没准备好，1：准备好了
-    uint8_t w_ready = 0;                    // 写准备好标记 -- 0：没准备好，1：准备好了
+    // uint8_t w_ready = 0;                    // 写准备好标记 -- 0：没准备好，1：准备好了
     ngx_event_handler r_handler = nullptr;  // 读事件的处理方法
-    ngx_event_handler w_handler = nullptr;  // 写事件的处理方法
+    // ngx_event_handler w_handler = nullptr;  // 写事件的处理方法
 
     // 收包相关
     int curRecvPktState = INVALID_STATE;    // 记录当前通过该TCP连接的收包状态，初始为无效状态
@@ -30,6 +31,9 @@ struct TCPConnection{
     uint8_t * recvIndex = nullptr;          // 指向当前要接收的数据
     uint16_t recvLength = 0;                // 要接收数据的长度
     uint8_t * recvBuffer = nullptr;         // 接收缓冲区
+
+    // 一个TCP对象会在多个线程中使用，所以要临界
+    pthread_mutex_t mutex;
 
     TCPConnection * next = nullptr; // 指向下一个TCP连接
 };

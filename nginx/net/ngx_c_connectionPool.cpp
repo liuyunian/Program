@@ -11,7 +11,8 @@ ConnectionPool::ConnectionPool(int size) :
     m_poolSize(size),
     m_freeSize(size),
     m_connectionPool(nullptr),
-    m_free(nullptr)
+    m_free(nullptr),
+    m_tail(nullptr)
 {
     m_connectionPool = new TCPConnection[m_poolSize];
     TCPConnection * next = nullptr;
@@ -21,7 +22,8 @@ ConnectionPool::ConnectionPool(int size) :
         next = &m_connectionPool[i];
     }
     
-    m_free = m_connectionPool;
+    m_free = m_connectionPool; // 数组中第一个连接对象
+    m_tail = &m_connectionPool[m_poolSize-1]; // 数组中的最后一个连接对象
 }
 
 ConnectionPool::~ConnectionPool(){
@@ -49,6 +51,9 @@ TCPConnection * ConnectionPool::ngx_get_connection(int sockfd){
     c->sockfd = sockfd;
     c->validFlag = !validFlag; // 取反，用于判断事件是否过期
     c->curSeq = curSeq+1;  // 每次取用该值都增加1
+    if(c->curSeq == UINT64_MAX){
+        c->curSeq = 0;
+    }
     //....其他内容再增加
 
     return c; 
@@ -60,11 +65,12 @@ void ConnectionPool::ngx_free_connection(TCPConnection * c){
         c->recvBuffer = nullptr;
     }
 
-    c->next = m_free;
-
     ++ (c->curSeq); // 释放连接时也++
-
-    m_free = c;
+    if(c->curSeq == UINT64_MAX){
+        c->curSeq = 0;
+    }
+    c->next = m_tail->next;
+    m_tail = c;
     ++ m_freeSize;
 }
 
