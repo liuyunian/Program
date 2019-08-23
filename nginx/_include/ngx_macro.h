@@ -47,13 +47,6 @@ enum Process_type{
 //数据包的最大长度
 #define PKT_MAX_LEN  10240
 
-// 收包状态
-enum Recv_pkt_state{
-    INVALID_STATE = -1,
-    RECV_PKT_HEADER,
-    RECV_PKT_BODY
-};
-
 /**********************************
  * 线程池
  **********************************/

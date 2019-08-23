@@ -10,11 +10,11 @@
 #include "misc/ngx_c_memoryPool.h"
 
 ThreadPool * ThreadPool::instance = nullptr;
-pthread_mutex_t ThreadPool::m_msgQueMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t ThreadPool::m_recvMsgQueMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t ThreadPool::m_cond = PTHREAD_COND_INITIALIZER;
 std::atomic<bool> ThreadPool::m_stop (false);
 std::atomic<int> ThreadPool::m_runningNum(0);
-std::list<uint8_t *> ThreadPool::m_msgQueue;
+std::queue<uint8_t *> ThreadPool::m_recvMsgQue;
 
 ThreadPool::ThreadPool() : m_threadNum(0){}
 
@@ -60,40 +60,36 @@ void * ThreadPool::ngx_thread_entryFunc(void * arg){
     MemoryPool * mp = MemoryPool::getInstance();
     
     for(;;){
-        err = pthread_mutex_lock(&m_msgQueMutex);
+        err = pthread_mutex_lock(&m_recvMsgQueMutex);
         if(err != 0){
-            ngx_log(NGX_LOG_ERR, err, "ngx_thread_entryFunc()函数中互斥量m_msgQueMutex加锁失败");
+            ngx_log(NGX_LOG_ERR, err, "ngx_thread_entryFunc()函数中互斥量m_recvMsgQueMutex加锁失败");
         }
 
-        while(m_stop == false && m_msgQueue.empty()){
+        while(m_stop == false && m_recvMsgQue.empty()){
             if(thread->isRunning == false){
                 thread->isRunning = true;
             }
 
-            pthread_cond_wait(&m_cond, &m_msgQueMutex);
+            pthread_cond_wait(&m_cond, &m_recvMsgQueMutex);
         }
 
         if(m_stop){ // 用于stop
-            err = pthread_mutex_unlock(&m_msgQueMutex);
-            if(err != 0){
-                ngx_log(NGX_LOG_ERR, err, "ngx_thread_entryFunc()函数中互斥量m_msgQueMutex解锁失败");
-            }
-
+            pthread_mutex_unlock(&m_recvMsgQueMutex);
             break;
         }
 
-        msg = m_msgQueue.front(); // 从消息队列中拿消息
-        m_msgQueue.pop_front(); 
+        msg = m_recvMsgQue.front(); // 从消息队列中拿消息
+        m_recvMsgQue.pop(); 
 
-        err = pthread_mutex_unlock(&m_msgQueMutex);
+        err = pthread_mutex_unlock(&m_recvMsgQueMutex);
         if(err != 0){
-            ngx_log(NGX_LOG_ERR, err, "ngx_thread_entryFunc()函数中互斥量m_msgQueMutex解锁失败");
+            ngx_log(NGX_LOG_ERR, err, "ngx_thread_entryFunc()函数中互斥量m_recvMsgQueMutex解锁失败");
         }
 
         ++ m_runningNum;
 
         // ... 增加处理从消息队列中取出的消息的函数
-        g_sock.ngx_msg_handle(msg);
+        g_sock.ngx_recvMsg_handle(msg);
 
         mp->ngx_free_memory(msg);
         -- m_runningNum;
@@ -129,27 +125,27 @@ void ThreadPool::ngx_threadPool_stop(){
     MemoryPool * mp = MemoryPool::getInstance();
     uint8_t * msg = nullptr;
 
-    while(!m_msgQueue.empty()){
-        msg = m_msgQueue.front();
-        m_msgQueue.pop_front(); // 移除队首的消息
+    while(!m_recvMsgQue.empty()){
+        msg = m_recvMsgQue.front();
+        m_recvMsgQue.pop(); // 移除队首的消息
         mp->ngx_free_memory(msg);
     }
 }
 
-void ThreadPool::ngx_msgQue_push(uint8_t * msg){
-    ngx_log(NGX_LOG_DEBUG, 0, "执行了ngx_msgQue_push()函数");
+void ThreadPool::ngx_recvMsgQue_push(uint8_t * msg){
+    ngx_log(NGX_LOG_DEBUG, 0, "执行了ngx_recvMsgQue_push()函数");
 
     int err = -1; // 错误码
-    err = pthread_mutex_lock(&m_msgQueMutex);
+    err = pthread_mutex_lock(&m_recvMsgQueMutex);
     if(err != 0){
-        ngx_log(NGX_LOG_ERR, err, "ngx_msgQue_push()函数中互斥量m_msgQueMutex加锁失败");
+        ngx_log(NGX_LOG_ERR, err, "ngx_recvMsgQue_push()函数中互斥量m_recvMsgQueMutex加锁失败");
     }
 
-    m_msgQueue.push_back(msg);
+    m_recvMsgQue.push(msg);
 
-    err = pthread_mutex_unlock(&m_msgQueMutex);
+    err = pthread_mutex_unlock(&m_recvMsgQueMutex);
     if(err != 0){
-        ngx_log(NGX_LOG_ERR, err, "ngx_msgQue_push()函数中互斥量m_msgQueMutex解锁失败");
+        ngx_log(NGX_LOG_ERR, err, "ngx_recvMsgQue_push()函数中互斥量m_recvMsgQueMutex解锁失败");
     }
 
     err = pthread_cond_signal(&m_cond);

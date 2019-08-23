@@ -15,13 +15,14 @@ int g_procType;
 
 struct LogInfor g_logInfor;
 
-BusinessSocket g_sock;
+BusinessSocket * g_sock;
 
 int main(int argc, char * argv[]){
     // 无关紧要的初始化
     int exitCode = 0;
     g_argv = argv;
     g_procType = NGX_MASTER_PROCESS;
+    g_sock = new BusinessSocket();
 
     // 加载配置文件
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
@@ -43,7 +44,8 @@ int main(int argc, char * argv[]){
         goto exit_label;
     }
 
-    if(g_sock.ngx_sockets_init()){
+    // 初始化socket对象
+    if(g_sock->ngx_socket_master_init() < 0){
         exitCode = 1;
         goto exit_label;
     }
@@ -67,6 +69,10 @@ int main(int argc, char * argv[]){
     ngx_master_process_cycle();
 
 exit_label:
+    // 反初始化Socket对象
+    g_sock->ngx_socket_master_destroy()
+    delete g_sock;
+
     // 释放设置标题时分配的内存
     ngx_free_environ();
 

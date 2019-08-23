@@ -8,14 +8,13 @@
 #include "_include/ngx_func.h"
 #include "_include/ngx_global.h"
 #include "net/ngx_c_threadPool.h"
-
-static void ngx_worker_process_create(int wp_num);
+#include "business/ngx_c_business_socket.h"
 
 static void ngx_worker_process_cycle(int seq);
 
 void ngx_master_process_cycle(){
+    // [1] 屏蔽信号，不希望在fork子进程时被信号打断
     sigset_t set;
-
     sigemptyset(&set);
 
     sigaddset(&set, SIGCHLD);     //子进程状态改变
@@ -29,44 +28,51 @@ void ngx_master_process_cycle(){
     sigaddset(&set, SIGTERM);     //终止
     sigaddset(&set, SIGQUIT);     //终端退出符
 
-    if(sigprocmask(SIG_BLOCK, &set, NULL) < 0){ // 屏蔽上述信号，不希望在fork子进程时被信号打断
+    if(sigprocmask(SIG_BLOCK, &set, NULL) < 0){
         ngx_log(NGX_LOG_ERR, errno, "ngx_master_process_cycle()中sigprocmask()失败!");
     }
 
+    // [2] fork子进程
     ConfFileProcessor * confProcessor = ConfFileProcessor::getInstance();
-    int wp_num = confProcessor->ngx_conf_getContent_int("WorkProcess", NGX_WORKER_PROCESSES);
-    ngx_worker_process_create(wp_num);
-
-    sigemptyset(&set); // 清空信号集
-
-    for(;;){ // master process进入工作循环
-        // sleep(1);
-
-        sigsuspend(&set); // 阻塞在这里，等待一个信号，此时进程是挂起的，不占用cpu时间，只有收到信号才会被唤醒，此时master进程完全靠信号驱动干活
-    }
-}
-
-static void 
-ngx_worker_process_create(int wp_num){
-    for(int i = 0; i < wp_num; ++ i){
+    int wpNum = confProcessor->ngx_conf_getContent_int("WorkProcess", NGX_WORKER_PROCESSES);
+    for(int i = 0; i < wpNum; ++ i){
         pid_t pid = fork();
         if(pid == -1){ // 创建失败
             ngx_log(NGX_LOG_FATAL, errno, "ngx_worker_process_create()中fork()创建子进程失败，num = %d", i);
         }
-        else if(pid == 0){
+        else if(pid == 0){ // 子进程
             ngx_worker_process_cycle(i);
         }
-        else{
+        else{ // 父进程
             continue;
         }
     }
 
-    // master进程会执行到这里
-    // 如有需要，再增加代码
+    // [3] 清空信号集，不再屏蔽信号
+    sigemptyset(&set);
+
+    // [4] 反初始化并释放给Socket对象
+    /**
+     * 之前是这样考虑的：master进程是管理进程并不需要Socket对象负责通信
+     * 所以这里考虑反初始化Socket对象 -- 关闭监听套接字，之后delete g_sock;
+     * 
+     * 但是如果考虑到work子进程终止之后master进程要负责再fork，那么此时就不能反初始化Socket对象
+     * 因为这样的话子进程就没法创建监听套接字了
+    */
+    // g_sock->ngx_socket_master_destroy();
+    // delete g_sock;
+
+    // [5] 进入工作循环
+    for(;;){
+        /**
+         * 阻塞在这里，等待一个信号，此时进程是挂起的，不占用cpu时间，只有收到信号才会被唤醒
+         * 此时master进程完全靠信号驱动干活
+        */
+        sigsuspend(&set);
+    }
 }
 
-static void
-ngx_worker_process_cycle(int seq){
+static void ngx_worker_process_cycle(int seq){
     // [1] 无关紧要
     int ret = 0; // 记录返回值
     g_procType = NGX_WORKER_PROCESS;
@@ -79,74 +85,33 @@ ngx_worker_process_cycle(int seq){
     if(ret < 0){
         ngx_log(NGX_LOG_ERR, errno, "ngx_worker_process_init()中sigprocmask()失败!，num = %d", seq);
 
-        // 释放设置标题时分配的内存
-        ngx_free_environ();
-
-        // 关闭日志文件
-        ngx_log_close();
-
-        exit(1);
+        exit(1); // 直接退出，交由操作系统释放资源
     }
 
-    // 注意初始化监听套接字放在worker子进程中，只有一个worker进程可以初始化成功，其他worker进程会失败，错误信息如下：
-    // Socket::ngx_open_listening_sockets()中执行bind()失败, i = 1 (98: Address already in use)
-    // [3] 初始化监听套接字，开始接受TCP连接
-    // ret = g_sock.ngx_sockets_init();
-    // if(ret < 0){
-    //     // 释放设置标题时分配的内存
-    //     ngx_free_environ();
-
-    //     // 关闭日志文件
-    //     ngx_log_close();
-
-    //     exit(1);
-    // }
-
-    // [4] 创建线程池
+    // [3] 创建线程池
     ThreadPool * tp = ThreadPool::getInstance();
     ret = tp->ngx_threadPool_create();
     if(ret < 0){
-        // 关闭监听套接字
-        g_sock.ngx_sockets_close();
-
-        // 释放设置标题时分配的内存
-        ngx_free_environ();
-
-        // 关闭日志文件
-        ngx_log_close();
-
-        exit(1);
+        exit(1); // 直接退出，交由操作系统释放资源
     }
 
-    // [5] 初始化epoll
-    ret = g_sock.ngx_epoll_init();
+    // [4] 初始化Socket对象
+    ret = g_sock->ngx_socket_worker_init();
     if(ret < 0){
-        // 关闭监听套接字
-        g_sock.ngx_sockets_close();
-
-        // 线程池停止工作
-        tp->ngx_threadPool_stop();
-
-        // 释放设置标题时分配的内存
-        ngx_free_environ();
-
-        // 关闭日志文件
-        ngx_log_close();
-
-        exit(1);
+        exit(1); // 直接退出，交由操作系统释放资源
     }
 
-    // ... 其他初始化
+    // [5] ... 其他初始化
 
     ngx_log(NGX_LOG_INFO, 0, "nginx: worker %d 启动并开始运行......!", getpid());
 
-    for(;;){ 
-        // sleep(1);
-       g_sock.ngx_epoll_getEvent(-1);
+    for(;;){
+       g_sock->ngx_epoll_getEvent(-1);
     }
 
-    // 关闭监听套接字
-    g_sock.ngx_sockets_close();
+    // Socket对象反初始化
+    g_sock->ngx_socket_worker_destroy();
+    delete g_sock;
 
     // 线程池停止工作
     tp->ngx_threadPool_stop();

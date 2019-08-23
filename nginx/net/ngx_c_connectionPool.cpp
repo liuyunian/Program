@@ -60,9 +60,12 @@ TCPConnection * ConnectionPool::ngx_get_connection(int sockfd){
 }
 
 void ConnectionPool::ngx_free_connection(TCPConnection * c){
-    if(c->recvBuffer != nullptr){
-        MemoryPool::getInstance()->ngx_free_memory(c->recvBuffer);
-        c->recvBuffer = nullptr;
+    if(c->recvBuf != nullptr){
+        MemoryPool::getInstance()->ngx_free_memory(c->recvBuf);
+    }
+
+    if(c->sendBuf != nullptr){
+        MemoryPool::getInstance()->ngx_free_memory(c->sendBuf);
     }
 
     ++ (c->curSeq); // 释放连接时也++

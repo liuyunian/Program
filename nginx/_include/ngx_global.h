@@ -23,6 +23,6 @@ extern int g_procType; // 用于记录当前是master还是worker
 /**
  * 网络
 */
-extern BusinessSocket g_sock;
+extern BusinessSocket * g_sock;
 
 #endif

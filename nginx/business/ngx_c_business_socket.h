@@ -29,14 +29,33 @@ struct LoginInfo{
 class BusinessSocket : public Socket{
 public:
     BusinessSocket();
-
     virtual ~BusinessSocket();
 
-    virtual void ngx_msg_handle(uint8_t * msg);
+    /**
+     * @brief Socket对象在master进程中的初始化
+    */
+    virtual int ngx_socket_master_init();
 
-    void ngx_bussiness_register(TCPConnection *, MsgHeader *, uint8_t *, uint16_t);
+    /**
+     * @brief Socket对象在worker进程中的初始化
+    */
+    virtual int ngx_socket_worker_init();
 
-    void ngx_bussiness_login(TCPConnection *, MsgHeader *, uint8_t *, uint16_t);
+    /**
+     * @brief Socket对象在master进程中释放
+    */
+    virtual void ngx_socket_master_destroy();
+
+    /**
+     * @brief Socket对象在master进程中释放
+    */
+    virtual void ngx_socket_worker_destroy();
+
+    virtual void ngx_recvMsg_handle(uint8_t * msg);
+
+    void ngx_bussiness_register(MsgHeader *, uint8_t *, uint16_t);
+
+    void ngx_bussiness_login(MsgHeader *, uint8_t *, uint16_t);
 };
 
 #endif // NGX_C_BUSINESS_SOCKET_H_

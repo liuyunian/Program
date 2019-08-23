@@ -20,25 +20,102 @@
 #include "_include/ngx_macro.h"
 #include "misc/ngx_c_memoryPool.h"
 
-Socket::Socket() : 
-    m_portCount(0),
-    m_epfd(-1),
-    m_connectionPool(nullptr){}
+const int Socket::PKT_HEADER_SZ = sizeof(PktHeader);
+const int Socket::MSG_HEADER_SZ = sizeof(MsgHeader);
 
-Socket::~Socket(){
-    // 释放监听套接字
-    for(auto & sock : m_listenSokcetList){
-        delete sock;
+Socket::Socket() : 
+    m_epfd(-1),
+    m_connectionPool(nullptr),
+    m_sendThreadStop(false){}
+
+Socket::~Socket(){}
+
+/********************************************************************
+ * 初始化和释放函数
+*********************************************************************/
+int Socket::ngx_socket_master_init(){
+    if(g_sock.ngx_listenSockets_init()){
+        return -1;
     }
-    m_listenSokcetList.clear();
+
+    return 0;
 }
+
+int Socket::ngx_socket_worker_init(){
+    // 初始化互斥量
+    int err = pthread_mutex_init(&m_sendMsgQueMutex, NULL);
+    if(err != 0){
+        ngx_log(NGX_LOG_ERR, err, "Socket::ngx_socket_worker_init()函数中互斥量初始化失败");
+        return -1;
+    }
+
+    // 初始化信号量
+    err = sem_init(&m_sendThreadSem, 0, 0);
+    if(err < 0){
+        ngx_log(NGX_LOG_ERR, err, "Socket::ngx_socket_worker_init()函数中信号量初始化失败");
+        return -1;
+    }
+
+    // 创建发送消息线程
+    err = pthread_create(&m_sendTid, NULL, ngx_sendMsg_thread_entryFunc, this);
+    if(err != 0){
+        ngx_log(NGX_LOG_ERR, err, "Socket::ngx_socket_worker_init()函数中创建发送消息线程失败");
+        return -1;
+    }
+
+    // 注意初始化监听套接字放在worker子进程中，只有一个worker进程可以初始化成功，其他worker进程会失败，错误信息如下：
+    // Socket::ngx_listenSockets_init()中执行bind()失败, i = 1 (98: Address already in use)
+
+    // 初始化epoll对象
+    err = ngx_epoll_init();
+    if(err < 0){
+        return -1;
+    }
+}
+
+void Socket::ngx_socket_master_destroy(){
+    // 关闭监听套接字
+    ngx_listenSockets_close();
+
+    // ... 后续增加
+}
+
+void Socket::ngx_socket_worker_destroy(){
+    // 释放epoll对象
+    ngx_epoll_close();
+
+    // 释放监听套接字
+    ngx_listenSockets_close();
+
+    // 终止发送消息线程
+    m_sendThreadStop = true;
+    sem_post(&m_sendThreadSem);// 让ngx_sendMsg_thread_entryFunc()停止等待，继续执行
+    pthread_join(m_sendTid, NULL);
+
+    // 清空发送消息队列，发送消息线程终止之后，不再需要互斥
+    MemoryPool * mp = MemoryPool::getInstance();
+    uint8_t * sendMsg = nullptr;
+
+    while(!m_sendMsgQue.empty()){
+        sendMsg = m_sendMsgQue.front();
+        m_sendMsgQue.pop_front(); // 移除队首的消息
+        mp->ngx_free_memory(sendMsg);
+    }
+
+    // 释放信号量
+    sem_destroy(&m_sendThreadSem);
+
+    // 释放互斥量
+    pthread_mutex_destory(&m_sendMsgQueMutex);
+}
+
 
 /********************************************************************
  * 监听套接字有关的函数
 *********************************************************************/
-int Socket::ngx_sockets_init(){
+int Socket::ngx_listenSockets_init(){
     ConfFileProcessor * confProcess = ConfFileProcessor::getInstance();
-    m_portCount = confProcess->ngx_conf_getContent_int("PortCount", NGX_PROT_COUNT);
+    int portCount = confProcess->ngx_conf_getContent_int("PortCount", NGX_PROT_COUNT);
 
     int sockfd;
     struct sockaddr_in serv_addr;
@@ -50,24 +127,24 @@ int Socket::ngx_sockets_init(){
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    for(int i = 1; i <= m_portCount; ++ i){
+    for(int i = 1; i <= portCount; ++ i){
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if(sockfd < 0){
-            ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_open_listening_sockets()中执行socket()失败, i = %d", i);
+            ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_listenSockets_init()中执行socket()失败, i = %d", i);
             return -1;
         }
 
         int reuseaddr = 1;
         ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&reuseaddr, sizeof(reuseaddr)); // 设置地址可以复用
         if(ret < 0){
-            ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_open_listening_sockets()中执行setsockopt(SO_REUSEADDR)失败, i = %d", i);
+            ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_listenSockets_init()中执行setsockopt(SO_REUSEADDR)失败, i = %d", i);
             close(sockfd);                                               
             return -1;
         }
 
         ret = ngx_set_nonblocking(sockfd); // 将socket设置为非阻塞
         if(ret < 0){
-            ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_open_listening_sockets()中执行ngx_set_nonblocking()失败, i = %d", i);
+            ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_listenSockets_init()中执行ngx_set_nonblocking()失败, i = %d", i);
             close(sockfd);                                               
             return -1;
         }
@@ -76,7 +153,7 @@ int Socket::ngx_sockets_init(){
         sprintf(tmp_str, "Port%d", i);
         port = confProcess->ngx_conf_getContent_int(tmp_str);
         if(port < 0){
-            if(m_portCount == 1){
+            if(portCount == 1){
                 port = NGX_LISTEN_PORT;
             }
             else{
@@ -90,14 +167,14 @@ int Socket::ngx_sockets_init(){
 
         ret = bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
         if(ret < 0){
-            ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_open_listening_sockets()中执行bind()失败, i = %d", i);
+            ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_listenSockets_init()中执行bind()失败, i = %d", i);
             close(sockfd);                                               
             return -1;
         }
 
         ret = listen(sockfd, NGX_LISTEN_BACKLOG);
         if(ret < 0){
-            ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_open_listening_sockets()中执行listen()失败, i = %d", i);
+            ngx_log(NGX_LOG_FATAL, errno, "Socket::ngx_listenSockets_init()中执行listen()失败, i = %d", i);
             close(sockfd);                                               
             return -1;
         }
@@ -113,11 +190,13 @@ int Socket::ngx_sockets_init(){
     return 0;
 }
 
-void Socket::ngx_sockets_close(){
+void Socket::ngx_listenSockets_close(){
     for(auto & sock : m_listenSokcetList){
         close(sock->sockfd);
         ngx_log(NGX_LOG_INFO, 0, "监听端口%d已关闭", sock->port);
+        delete sock;
     }
+    m_listenSokcetList.clear();
 }
 
 /********************************************************************
@@ -148,7 +227,7 @@ int Socket::ngx_epoll_init(){
 
         c->r_handler = &Socket::ngx_event_accept;
 
-        if(ngx_epoll_operateEvent(sock->sockfd, EPOLL_CTL_ADD, EPOLLIN|EPOLLRDHUP, c) < 0){
+        if(ngx_epoll_operateEvent(sock->sockfd, EPOLL_CTL_ADD, 0, EPOLLIN|EPOLLRDHUP, c) < 0){
             return -1;
         }
     }
@@ -156,16 +235,37 @@ int Socket::ngx_epoll_init(){
     return 0;
 }
 
-int Socket::ngx_epoll_operateEvent(int sockfd, uint32_t operation, uint32_t eventType, TCPConnection * c){
+void Socket::ngx_epoll_close(){
+    if(close(m_epfd) < 0){
+        ngx_log(NGX_LOG_ERR, errno, "ngx_epoll_close()函数中关闭epoll对象失败");
+    }
+}
+
+int Socket::ngx_epoll_operateEvent(int sockfd, uint32_t operation, int option, uint32_t eventType, TCPConnection * c){
     struct epoll_event et;
     memset(&et, 0, sizeof(struct epoll_event));
 
     if(operation == EPOLL_CTL_ADD){ // 增加事件
-        et.data.ptr = (void *)((uintptr_t)c | c->validFlag); // 将TCPConnection对象和表征该连接是否有效的标志位放到epoll_event.data中，后续来事件时，取用连接对象和标志位
         et.events = eventType;
+        c->eventType = eventType;
     }
     else if(operation == EPOLL_CTL_MOD){ // 修改事件
-        // ... 待扩展
+        et.events = c->eventType; // 还原原来监听的事件
+        
+        if(option == 0){        // 减少监听事件
+            et.events &= eventType;
+        }
+        else if(option == 1){   // 增加监听事件
+            et.events |= eventType;
+        }
+
+        else if(option == 2){   // 覆盖监听事件
+            et.events = eventType;
+        }
+        else{                   // 无效选项
+            ngx_log(NGX_LOG_ERR, 0, "Socket::ngx_epoll_operateEvent()函数中修改监听事件时提供的无效的选项");
+            return -1;
+        }
     }
     else if(operation == EPOLL_CTL_DEL){ // 删除事件
         // ... 待扩展
@@ -174,6 +274,14 @@ int Socket::ngx_epoll_operateEvent(int sockfd, uint32_t operation, uint32_t even
         ngx_log(NGX_LOG_ERR, 0, "Socket::ngx_epoll_operateEvent()参数operation没有对应的操作");
         return -1;
     }
+
+    /**
+     * 将TCPConnection对象和表征该连接是否有效的标志位放到epoll_event.data中
+     * 后续来事件时，取用连接对象和标志位
+     * 
+     * et.data是一个共用体，ptr是其中的一个成员
+    */
+    et.data.ptr = (void *)((uintptr_t)c | c->validFlag);
 
     if(epoll_ctl(m_epfd, operation, sockfd, &et) < 0){
         ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_epoll_operateEvent()中执行epoll_ctl()失败");
@@ -264,14 +372,16 @@ int Socket::ngx_epoll_getEvent(int timer){
 
         // 开始处理正常的事件
         eventType = m_events[i].events; // 事件类型
-        if(eventType & (EPOLLERR | EPOLLHUP)){
-            /**
-             * 这种情况是什么意思
-             * 为什么要这样处理呢？
-            */
-            eventType |= EPOLLIN | EPOLLOUT; // 增加读写标记
-        }
-        else if(eventType & EPOLLIN){
+
+        // if(eventType & (EPOLLERR | EPOLLHUP)){
+        //     /**
+        //      * 这种情况是什么意思
+        //      * 为什么要这样处理呢？
+        //     */
+        //     eventType |= EPOLLIN | EPOLLOUT; // 增加读写标记
+        // }
+
+        if(eventType & EPOLLIN){
             /**
              * 读事件，发生读事件有两种情况
              * 监听套接字：新客户端发起连接 -- 执行ngx_event_accept(c);
@@ -280,17 +390,20 @@ int Socket::ngx_epoll_getEvent(int timer){
             
             (this->*(c->r_handler))(c);
         }
-        else if(eventType & EPOLLOUT){ // 写事件
+
+        if(eventType & EPOLLOUT){ // 写事件
             /**
-             * 写事假
+             * 写事件
+             * 连接套接字的发送缓冲区不满时触发该事件 -- 执行ngx_event_send(c);
             */
 
-            // ... 后续增加
+            (this->*(c->w_handler))(c);
         }
-        else{
-            ngx_log(NGX_LOG_ERR, 0, "Socket::ngx_epoll_getEvent()中遇到了未知事件类型");
-            return -1;
-        }
+
+        // else{
+        //     ngx_log(NGX_LOG_ERR, 0, "Socket::ngx_epoll_getEvent()中遇到了未知事件类型");
+        //     return -1;
+        // }
     }
 
     return 0;
@@ -381,14 +494,14 @@ void Socket::ngx_event_accept(TCPConnection * c){
 
         // 需判断是否超过最大允许的连接数...
 
-        // memcpy(&newConnection->cliAddr, &cliAddr, addrlen);
-        // newConnection->w_ready = 1; // 已准备好写数据
+        memcpy(&newConnection->cliAddr, &cliAddr, addrlen);
         newConnection->r_handler = &Socket::ngx_event_recv;
+        newConnection->w_handler = &Socket::ngx_event_send;
         newConnection->curRecvPktState = RECV_PKT_HEADER; // 收包状态处于准备接收包头状态
-        newConnection->recvIndex = newConnection->pktHeader;
-        newConnection->recvLength = sizeof(PktHeader);
+        newConnection->recvPos = newConnection->pktHeader;
+        newConnection->recvLen = PKT_HEADER_SZ;
         
-        if(ngx_epoll_operateEvent(sockfd, EPOLL_CTL_ADD, EPOLLIN|EPOLLRDHUP, newConnection) < 0){ // LT模式
+        if(ngx_epoll_operateEvent(sockfd, EPOLL_CTL_ADD, 0, EPOLLIN|EPOLLRDHUP, newConnection) < 0){ // LT模式
             /**
              * 向epoll对象添加事件出错，出错的原因是epoll_ctl()函数出错
              * 虽然这个地方不易出错，但是对于这样的错误处理方式是否不妥
@@ -416,7 +529,7 @@ void Socket::ngx_event_close(TCPConnection * c){
 void Socket::ngx_event_recv(TCPConnection * c){
     ngx_log(NGX_LOG_DEBUG, 0, "执行了ngx_event_recv()函数");
 
-    ssize_t len = recv(c->sockfd, c->recvIndex, c->recvLength, 0); // recv()系统调用，这里flags设置为0，作用同read()
+    ssize_t len = recv(c->sockfd, c->recvPos, c->recvLen, 0); // recv()系统调用，这里flags设置为0，作用同read()
 
     if(len < 0){
         int errnoCp = errno;
@@ -451,7 +564,7 @@ void Socket::ngx_event_recv(TCPConnection * c){
              * ... 其他错误等待后续完善
             */
 
-            ngx_log(NGX_LOG_ERR, errno, "ngx_event_recv()函数中调用recv()函数接收数据错误");
+            ngx_log(NGX_LOG_ERR, errnoCp, "ngx_event_recv()函数中调用recv()函数接收数据错误");
             return;
         }
     }
@@ -463,21 +576,21 @@ void Socket::ngx_event_recv(TCPConnection * c){
 
     // 处理正确接收的情况，采用状态机
     if(c->curRecvPktState == RECV_PKT_HEADER){
-        if(len == c->recvLength){ // 接收到了完整的包头
+        if(len == c->recvLen){ // 接收到了完整的包头
             ngx_pktHeader_parsing(c);
         }
         else{
-            c->recvIndex += len;
-            c->recvLength -= len;
+            c->recvPos += len;
+            c->recvLen -= len;
         }
     }
     else if(c->curRecvPktState == RECV_PKT_BODY){
-        if(len == c->recvLength){ // 接收到了完整的包体
+        if(len == c->recvLen){ // 接收到了完整的包体
             ngx_packet_handle(c);
         }
         else{
-            c->recvIndex += len;
-            c->recvLength -= len;
+            c->recvPos += len;
+            c->recvLen -= len;
         }
     }
     else{
@@ -489,14 +602,14 @@ void Socket::ngx_event_recv(TCPConnection * c){
 void Socket::ngx_pktHeader_parsing(TCPConnection * c){
     ngx_log(NGX_LOG_DEBUG, 0, "执行了ngx_pktHeader_parsing()函数");
 
-    uint16_t pktHd_len = static_cast<uint16_t>(sizeof(PktHeader));
+    uint16_t pktHd_len = static_cast<uint16_t>(PKT_HEADER_SZ);
 
     PktHeader * pktHd = (PktHeader *)(c->pktHeader);
     uint16_t pktLen = ntohs(pktHd->len); // 拿到完整的包长信息
     if(pktLen < pktHd_len){ // 记录的包长小于包头长度，此时数据包无效
         c->curRecvPktState = RECV_PKT_HEADER;
-        c->recvIndex = c->pktHeader;
-        c->recvLength = pktHd_len;
+        c->recvPos = c->pktHeader;
+        c->recvLen = pktHd_len;
 
         // ...这里处理有问题，没有将缓冲区中包体丢弃
         return;
@@ -504,8 +617,8 @@ void Socket::ngx_pktHeader_parsing(TCPConnection * c){
 
     if(pktLen > PKT_MAX_LEN){ // 对于大于PKT_MAX_LEN(10240)字节的包，认为也是无效包
         c->curRecvPktState = RECV_PKT_HEADER;
-        c->recvIndex = c->pktHeader;
-        c->recvLength = pktHd_len;
+        c->recvPos = c->pktHeader;
+        c->recvLen = pktHd_len;
 
         // ...这里处理有问题，没有将缓冲区中包体丢弃
         return;
@@ -516,7 +629,7 @@ void Socket::ngx_pktHeader_parsing(TCPConnection * c){
     // 处理正确的情况
     // [1] 分配内存，用于存放消息头+包头+包体
     uint8_t * buf = (uint8_t *)MemoryPool::getInstance()->ngx_alloc_memory(sizeof(struct MsgHeader) + pktLen);
-    c->recvBuffer = buf;
+    c->recvBuf = buf;
 
     // [2] 填写消息头
     MsgHeader * msgHd = (MsgHeader *)buf;
@@ -524,7 +637,7 @@ void Socket::ngx_pktHeader_parsing(TCPConnection * c){
     msgHd->curSeq = c->curSeq;
 
     // [3] 填充包头
-    buf += sizeof(MsgHeader);
+    buf += MSG_HEADER_SZ;
     memcpy(buf, c->pktHeader, pktHd_len);
 
     if(pktLen == pktHd_len){ // 只有包头没有包体的情况，这种情况是允许的
@@ -532,8 +645,8 @@ void Socket::ngx_pktHeader_parsing(TCPConnection * c){
     }
     else{
         c->curRecvPktState = RECV_PKT_BODY;
-        c->recvIndex = buf + pktHd_len; // buf当前指向包头，后移sizeof(PktHeader)指向包体
-        c->recvLength = pktLen - pktHd_len;
+        c->recvPos = buf + pktHd_len; // buf当前指向包头，后移PKT_HEADER_SZ指向包体
+        c->recvLen = pktLen - pktHd_len;
     }
 }
 
@@ -542,11 +655,239 @@ void Socket::ngx_packet_handle(TCPConnection * c){
 
     // [1] 将接收到的完整的数据push到消息队列
     ThreadPool * tp = ThreadPool::getInstance();
-    tp->ngx_msgQue_push(c->recvBuffer);
+    tp->ngx_recvMsgQue_push(c->recvBuf);
 
     // [2] 准备接收后续的数据
-    c->recvBuffer = nullptr; // 对应的内存由消息队列接管
+    c->recvBuf = nullptr; // 对应的内存由消息队列接管
     c->curRecvPktState = RECV_PKT_HEADER;
-    c->recvIndex = c->pktHeader;
-    c->recvLength = sizeof(PktHeader);
+    c->recvPos = c->pktHeader;
+    c->recvLen = PKT_HEADER_SZ;
 }
+
+void Socket::ngx_event_send(TCPConnection * c){
+    MemoryPool * mp = MemoryPool::getInstance();
+    ssize_t len = ngx_send(c->sockfd, c->sendPos, c->sendLen);
+
+    if(len > 0){
+        if(len == conn->sendLen){ // 数据完整的发送
+            c->curSendBufState = NGX_FREE;
+            mp->ngx_free_memory(c->sendBuf);
+
+            int err = ngx_epoll_operateEvent(c->sockfd, EPOLL_CTL_MOD, 0, EPOLLOUT, c); // 减去写事件通知
+            if(err < 0){ 
+                // 出错的原因都在ngx_epoll_operateEvent()函数中打印了日志，所以这里不用再打印
+                // 那么这里该如何处理呢？
+            }
+
+            err = sem_post(&m_sendThreadSem);
+            if(err < 0){
+                ngx_log(NGX_LOG_ERR, 0, "ngx_event_send()函数中调用sem_post(&m_sendThreadSem)出错");
+                return;
+            }
+        }
+        else{ // 数据只发送了一部分
+            c->sendPos += len;
+            c->sendLen -= len;
+
+            c->curSendBufState = NGX_BUSY;
+
+            return;
+        }
+    }
+    else{
+        /**
+         * 异常情况统一处理
+         * len = 0 -- 连接断开
+         * len = -1 -- 发送缓存已满（刚通知不满，所以不可能出该错）
+         * len = -2 -- 其他错误
+        */
+
+       ngx_log(NGX_LOG_ERR, 0, "Socket::ngx_event_send()函数中ngx_event_send()函数执行异常，len = %d", len);
+    }
+}
+
+/********************************************************************
+ * 发送数据有关的函数
+*********************************************************************/
+void Socket::ngx_sendMsgQue_push(uint8_t * sendMsg){
+    int err = pthread_mutex_lock(&m_sendMsgQueMutex);
+    if(err != 0){
+        ngx_log(NGX_LOG_ERR, err, "ngx_sendMsgQue_push()函数中互斥量m_sendMsgQueMutex加锁失败");
+        return;
+    }
+
+    m_sendMsgQue.push_back(sendMsg);
+
+    err = pthread_mutex_unlock(&m_sendMsgQueMutex);
+    if(err != 0){
+        ngx_log(NGX_LOG_ERR, err, "ngx_sendMsgQue_push()函数中互斥量m_sendMsgQueMutex解锁失败");
+        return;
+    }
+    
+    err = sem_post(&m_sendThreadSem);
+    if(err < 0){
+        ngx_log(NGX_LOG_ERR, 0, "ngx_sendMsgQue_push()函数中调用sem_post(&m_sendThreadSem)出错");
+        return;
+    }
+}
+
+void * Socket::ngx_sendMsg_thread_entryFunc(void * arg){
+    int err = 0;
+    MemoryPool * mp = MemoryPool::getInstance();
+    Socket * pThis = static_cast<Socket *>(arg);
+
+    uint8_t * sendMsg = nullptr;
+    MsgHeader * mh = nullptr;
+    PktHeader * ph = nullptr;
+    TCPConnection * conn = nullptr;
+
+    ssize_t len; // 记录ngx_send()返回值
+
+    for(;;){
+        err = sem_wait(&(pThis->m_sendThreadSem));
+        if(err < 0){
+            if(errno == EINTR){
+                /**
+                 * 因信号中断产生的错误，不应算是错误
+                 * 处理方式再次等待即可
+                */
+               continue;
+            }
+            else{
+                ngx_log(NGX_LOG_ERR, errno, "ngx_sendMsg_thread_entryFunc()函数中sem_wait()函数执行出错");
+                continue;
+            }
+        }
+
+        if(pThis->m_sendThreadStop){
+            break;
+        }
+
+        err = pthread_mutex_lock(&m_sendMsgQueMutex);
+        if(err != 0){
+            ngx_log(NGX_LOG_ERR, errno, "ngx_sendMsg_thread_entryFunc()函数中m_sendMsgQueMutex加锁失败");
+            continue;
+        }
+
+        for(auto iter = m_sendMsgQue.begin(); iter != m_sendMsgQue.end(); ++ iter){
+            sendMsg = m_sendMsgQue.front();
+            mh = (MsgHeader *)sendMsg; // 消息头
+            ph = (PktHeader *)(sendMsg + MSG_HEADER_SZ);
+            conn = mh->c;
+
+            // 判断连接是否过期
+            if(conn->curSeq != mh->curSeq){
+                m_sendMsgQue.erase(iter);
+                mp->ngx_free_memory(sendMsg);
+                continue;
+            }
+
+            // 判断消息对应的连接的发送缓冲区是否空闲
+            if(conn->curSendBufState == NGX_BUSY){
+                continue;
+            }
+
+            // 确定要发送数据
+            conn->sendBuf = sendMsg;
+            conn->sendPos = sendMsg + MSG_HEADER_SZ;
+            conn->sendLen = ntohs(ph->len);
+
+            m_sendMsgQue.erase(iter);
+
+            len = pThis->ngx_send(conn->sockfd, conn->sendPos, conn->sendLen);
+            if(len > 0){
+                if(len == conn->sendLen){ // 数据完整的发送
+                    conn->curSendBufState = NGX_FREE;
+                    mp->ngx_free_memory(conn->sendBuf);
+                }
+                else{ // 数据只发送了一部分
+                    conn->sendPos += len;
+                    conn->sendLen -= len;
+
+                    conn->curSendBufState = NGX_BUSY;
+
+                    err = ngx_epoll_operateEvent(conn->sockfd, EPOLL_CTL_MOD, 0, EPOLLOUT, conn); // 增加写事件通知
+                    if(err < 0){ 
+                        // ... 这里出错该怎么处理呢？
+                        // 出错的原因都在ngx_epoll_operateEvent()函数中打印了日志，所以这里不用再打印
+                    }
+                }
+            }
+            else if(len == 0){
+                /**
+                 * send()返回0有两种情况：一种是要发送的数据为0字节，另一种表示超时，对方关闭了连接
+                 * 这里如果不是程序写的有问题的话，那就是第二种原因，在发送数据过程中不处理连接关闭
+                 * 因为接收数据的过程中会处理连接关闭问题，接收和发送同属不同进行，并发执行，如果都处理连接关闭的话，如果出现问题
+                 * 
+                 * 这里按连接断开处理
+                */
+
+                mp->ngx_free_memory(conn->sendBuf);
+            }
+            else if(len == -1){
+                conn->curSendBufState = NGX_BUSY;
+
+                err = ngx_epoll_operateEvent(conn->sockfd, EPOLL_CTL_MOD, 1, EPOLLOUT, conn); // 增加写事件通知
+                if(err < 0){ 
+                    // ... 这里出错该怎么处理呢？
+                    // 出错的原因都在ngx_epoll_operateEvent()函数中打印了日志，所以这里不用再打印
+                }
+            }
+            else{
+                // 这里也是按连接断开处理
+                mp->ngx_free_memory(conn->sendBuf);
+            }
+        }
+
+        err = pthread_mutex_unlock(&m_sendMsgQueMutex);
+        if(err != 0){
+            ngx_log(NGX_LOG_ERR, errno, "ngx_sendMsg_thread_entryFunc()函数中m_sendMsgQueMutex解锁失败");
+            continue;
+        }
+    }
+
+    return (void *)0;
+}
+
+ssize_t Socket::ngx_send(int sockfd, uint8_t * buf, size_t nbytes){
+    ssize_t len = 0;
+    for(;;){
+        len = send(sockfd, buf, nbytes, 0);
+        if(len < 0){
+            if(errno == EINTR){
+                /**
+                 * 信号中断产生的错误
+                 * 处理方式：下一次循环再尝试发送
+                */
+
+                continue;
+            }
+            else if(errno == EAGAIN || errno == EWOULDBLOCK){
+                /**
+                 * 表示发送缓冲区已满
+                */
+
+                return -1;
+            }
+            else{
+                /**
+                 * 其他错误
+                */
+                ngx_log(NGX_LOG_ERR, errno, "Socket::ngx_send()函数中调用send()出错");
+                return -2;
+            }
+        }
+        else if(len = 0){
+            return 0;
+        }
+        else{
+            /**
+             * 成功发送了一些数据
+             * 这里不关心整个数据包是否完整的发送
+            */
+
+           return len;
+        }
+    }
+}
+

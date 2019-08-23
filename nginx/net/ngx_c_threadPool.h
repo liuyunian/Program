@@ -8,7 +8,7 @@
 #define NGX_C_THREADPOOL_H_
 
 #include <vector>
-#include <list>
+#include <queue>
 #include <atomic>
 
 #include <stddef.h> // size_t
@@ -57,17 +57,24 @@ public:
     void ngx_threadPool_stop();
 
     // 消息队列
-    void ngx_msgQue_push(uint8_t * msg);
+    void ngx_recvMsgQue_push(uint8_t * msg);
 
 private:
     static void * ngx_thread_entryFunc(void * arg);
 
 private:
-    static pthread_mutex_t m_msgQueMutex; // 消息队列互斥量
+    static pthread_mutex_t m_recvMsgQueMutex; // 消息队列互斥量
     static pthread_cond_t m_cond; // 条件变量
     static std::atomic<bool> m_stop; // 线程池是否已经停止工作
     static std::atomic<int> m_runningNum; // 记录正在运行的线程数
-    static std::list<uint8_t *> m_msgQueue; // 消息队列
+
+    /**
+     * 接收消息队列
+     * 这里选用queue容器，老师的课中选用的list容器
+     * queue容器的效率要比list容器高
+     * 目前代码中对接收消息的处理符合“先入先出”的原则，如果后续要对接收消息具有优先级的划分的话就需要更换容器了
+    */
+    static std::queue<uint8_t *> m_recvMsgQue;
 
     int m_threadNum; // 线程池中的线程数目
     std::vector<ThreadItem *> m_threadVec;
