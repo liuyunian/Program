@@ -34,7 +34,7 @@ Socket::~Socket(){}
  * 初始化和释放函数
 *********************************************************************/
 int Socket::ngx_socket_master_init(){
-    if(g_sock.ngx_listenSockets_init()){
+    if(ngx_listenSockets_init()){
         return -1;
     }
 
@@ -106,7 +106,7 @@ void Socket::ngx_socket_worker_destroy(){
     sem_destroy(&m_sendThreadSem);
 
     // 释放互斥量
-    pthread_mutex_destory(&m_sendMsgQueMutex);
+    pthread_mutex_destroy(&m_sendMsgQueMutex);
 }
 
 
@@ -669,7 +669,7 @@ void Socket::ngx_event_send(TCPConnection * c){
     ssize_t len = ngx_send(c->sockfd, c->sendPos, c->sendLen);
 
     if(len > 0){
-        if(len == conn->sendLen){ // 数据完整的发送
+        if(len == c->sendLen){ // 数据完整的发送
             c->curSendBufState = NGX_FREE;
             mp->ngx_free_memory(c->sendBuf);
 
@@ -763,21 +763,21 @@ void * Socket::ngx_sendMsg_thread_entryFunc(void * arg){
             break;
         }
 
-        err = pthread_mutex_lock(&m_sendMsgQueMutex);
+        err = pthread_mutex_lock(&pThis->m_sendMsgQueMutex);
         if(err != 0){
             ngx_log(NGX_LOG_ERR, errno, "ngx_sendMsg_thread_entryFunc()函数中m_sendMsgQueMutex加锁失败");
             continue;
         }
 
-        for(auto iter = m_sendMsgQue.begin(); iter != m_sendMsgQue.end(); ++ iter){
-            sendMsg = m_sendMsgQue.front();
+        for(auto iter = pThis->m_sendMsgQue.begin(); iter != pThis->m_sendMsgQue.end(); ++ iter){
+            sendMsg = pThis->m_sendMsgQue.front();
             mh = (MsgHeader *)sendMsg; // 消息头
             ph = (PktHeader *)(sendMsg + MSG_HEADER_SZ);
             conn = mh->c;
 
             // 判断连接是否过期
             if(conn->curSeq != mh->curSeq){
-                m_sendMsgQue.erase(iter);
+                pThis->m_sendMsgQue.erase(iter);
                 mp->ngx_free_memory(sendMsg);
                 continue;
             }
@@ -792,7 +792,7 @@ void * Socket::ngx_sendMsg_thread_entryFunc(void * arg){
             conn->sendPos = sendMsg + MSG_HEADER_SZ;
             conn->sendLen = ntohs(ph->len);
 
-            m_sendMsgQue.erase(iter);
+            pThis->m_sendMsgQue.erase(iter);
 
             len = pThis->ngx_send(conn->sockfd, conn->sendPos, conn->sendLen);
             if(len > 0){
@@ -806,7 +806,7 @@ void * Socket::ngx_sendMsg_thread_entryFunc(void * arg){
 
                     conn->curSendBufState = NGX_BUSY;
 
-                    err = ngx_epoll_operateEvent(conn->sockfd, EPOLL_CTL_MOD, 0, EPOLLOUT, conn); // 增加写事件通知
+                    err = pThis->ngx_epoll_operateEvent(conn->sockfd, EPOLL_CTL_MOD, 0, EPOLLOUT, conn); // 增加写事件通知
                     if(err < 0){ 
                         // ... 这里出错该怎么处理呢？
                         // 出错的原因都在ngx_epoll_operateEvent()函数中打印了日志，所以这里不用再打印
@@ -827,7 +827,7 @@ void * Socket::ngx_sendMsg_thread_entryFunc(void * arg){
             else if(len == -1){
                 conn->curSendBufState = NGX_BUSY;
 
-                err = ngx_epoll_operateEvent(conn->sockfd, EPOLL_CTL_MOD, 1, EPOLLOUT, conn); // 增加写事件通知
+                err = pThis->ngx_epoll_operateEvent(conn->sockfd, EPOLL_CTL_MOD, 1, EPOLLOUT, conn); // 增加写事件通知
                 if(err < 0){ 
                     // ... 这里出错该怎么处理呢？
                     // 出错的原因都在ngx_epoll_operateEvent()函数中打印了日志，所以这里不用再打印
@@ -839,7 +839,7 @@ void * Socket::ngx_sendMsg_thread_entryFunc(void * arg){
             }
         }
 
-        err = pthread_mutex_unlock(&m_sendMsgQueMutex);
+        err = pthread_mutex_unlock(&pThis->m_sendMsgQueMutex);
         if(err != 0){
             ngx_log(NGX_LOG_ERR, errno, "ngx_sendMsg_thread_entryFunc()函数中m_sendMsgQueMutex解锁失败");
             continue;

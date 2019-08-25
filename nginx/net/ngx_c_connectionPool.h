@@ -43,7 +43,7 @@ struct TCPConnection{
     uint8_t * recvBuf = nullptr;                    // 接收缓冲区，实际包含消息头
 
     // 发包相关
-    uint8_t sendPos = nullptr;                      // 指向当前要发送的数据
+    uint8_t * sendPos = nullptr;                      // 指向当前要发送的数据
     uint16_t sendLen = 0;                           // 要发送数据的长度
     uint8_t * sendBuf = nullptr;                    // 发送缓冲区，实际包含消息头
     SendBufState curSendBufState = NGX_FREE;        // 当前连接的发送缓冲区状态

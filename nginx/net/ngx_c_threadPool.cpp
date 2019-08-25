@@ -89,7 +89,7 @@ void * ThreadPool::ngx_thread_entryFunc(void * arg){
         ++ m_runningNum;
 
         // ... 增加处理从消息队列中取出的消息的函数
-        g_sock.ngx_recvMsg_handle(msg);
+        g_sock->ngx_recvMsg_handle(msg);
 
         mp->ngx_free_memory(msg);
         -- m_runningNum;

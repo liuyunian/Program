@@ -70,7 +70,7 @@ int main(int argc, char * argv[]){
 
 exit_label:
     // 反初始化Socket对象
-    g_sock->ngx_socket_master_destroy()
+    g_sock->ngx_socket_master_destroy();
     delete g_sock;
 
     // 释放设置标题时分配的内存
