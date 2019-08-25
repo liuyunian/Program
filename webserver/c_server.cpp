@@ -89,7 +89,8 @@ int Server::run(){
                     conn = new Connection(connfd);
                     conn->m_event.events = EPOLLIN | EPOLLET;
                     conn->m_event.data.fd = connfd;
-                    ret = epoll_ctl(m_epfd, EPOLL_CTL_ADD, connfd, &m_connectionStore[connfd].m_event);
+                    m_connectionStore.insert({connfd, conn});
+                    ret = epoll_ctl(m_epfd, EPOLL_CTL_ADD, connfd, &conn.m_event);
                     if(ret < 0){
                         perror("向epoll对象添加监听套接字事件失败");
                         continue;
@@ -98,7 +99,11 @@ int Server::run(){
                     perror("一个连接接入");
                 }
                 else{ // 连接套接字事件
-                    m_connectionStore[connfd].parse();
+                    ret = m_connectionStore[connfd].parse();
+                    if(ret == 0){
+                        delete m_connectionStore[connfd];
+                        m_connectionStore.erase(connfd);
+                    }
                 }
             }
         }

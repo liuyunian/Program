@@ -1,7 +1,7 @@
 #ifndef C_SERVER_H_
 #define C_SERVER_H_
 
-#include <vector>
+#include <map>
 
 #include <sys/epoll.h>
 
@@ -27,7 +27,7 @@ private:
     int m_epfd;
     
     epoll_event m_events[MAX_CONN_NUM]; // 单次返回的事件数组
-    std::vector<Connection *> m_connectionStore; // http连接对象数组
+    std::map<int, Connection *> m_connectionStore; // http连接对象数组
 };
 
 #endif // C_SERVER_H_
