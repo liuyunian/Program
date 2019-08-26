@@ -111,16 +111,16 @@ int Server::run(){
 }
 
 void Server::set_nonblocking(int sockfd){
-    int flags = fcntl(m_listenSockfd, F_GETFL, 0); // 获取sockfd当前的标志
+    int flags = fcntl(sockfd, F_GETFL, 0); // 获取sockfd当前的标志
     if(flags < 0){
-        perror("调用fcntl(m_listenSockfd, F_GETFL, 0)获取监听套接字标志失败");
+        perror("调用fcntl(sockfd, F_GETFL, 0)获取套接字标志失败");
         return;
     }
 
     flags |= O_NONBLOCK;
 
-    if(fcntl(m_listenSockfd, F_SETFL, flags)){
-        perror("将监听套接字设置为非阻塞方式失败");
+    if(fcntl(sockfd, F_SETFL, flags)){
+        perror("将套接字设置为非阻塞方式失败");
         return;
     }
 }
