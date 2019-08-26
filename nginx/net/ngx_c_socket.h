@@ -95,7 +95,7 @@ protected:
     /**
     * @brief 将要发送的数据添加到发送队列中
     */
-    void ngx_sendMsgQue_push();
+    void ngx_sendMsgQue_push(uint8_t * sendMsg);
 
 private:
     /**
@@ -170,11 +170,12 @@ private:
     */
     ssize_t ngx_send(int sockfd, uint8_t * buf, size_t nbytes);
 
-private:
+protected:
     // 静态成员常量
     static const int PKT_HEADER_SZ;
     static const int MSG_HEADER_SZ;
 
+private:
     // int m_portCount; // 监听端口的数目，感觉没有必要作为成员变量存在
     std::vector<ListenSocket *> m_listenSokcetList; // 监听socket列表
 

@@ -100,7 +100,7 @@ void BusinessSocket::ngx_recvMsg_handle(uint8_t * msg){
 
     // 调用具体的业务逻辑处理函数
     if(typeHandlers[type] != nullptr){
-        (this->*typeHandlers[type])(c, msgHeader, pktBody, pktBodyLen);
+        (this->*typeHandlers[type])(msgHeader, pktBody, pktBodyLen);
     }
 }
 
@@ -143,7 +143,7 @@ void BusinessSocket::ngx_bussiness_register(MsgHeader * msgHeader, uint8_t * pkt
     const int PKT_BODY_SZ = 1024; // 临时规定，实际还是需要更加具体的业务逻辑确定
 
     MemoryPool * mp = MemoryPool::getInstance();
-    uint8_t * sendMsg = mp->ngx_alloc_memory(MSG_HEADER_SZ + PKT_HEADER_SZ + PKT_BODY_SZ);
+    uint8_t * sendMsg = (uint8_t *)mp->ngx_alloc_memory(MSG_HEADER_SZ + PKT_HEADER_SZ + PKT_BODY_SZ);
 
     // 填充消息头
     memcpy(sendMsg, msgHeader, MSG_HEADER_SZ);
