@@ -9,13 +9,18 @@
 enum Http_method{
     GET,
     POST,
-    OTHER
+    OTHER_METHOD
 };
 
 enum Http_version{
     HTTPV1_0,
     HTTPV1_1,
-    OTHER
+    OTHER_VERSION
+};
+
+enum Http_stateCode{
+    HTTP_OK = 200,
+    HTTP_NO_FOUND = 404
 };
 
 class Connection{
@@ -25,11 +30,13 @@ public:
 
     int parse();
 
+    void process_request();
+
 public:
     epoll_event m_event;
 
 private:
-    void init();
+    void clear();
 
     ssize_t recv_msg();
 
@@ -41,12 +48,14 @@ private:
 
     int get_content(std::string & content, std::string sepa);
 
+    void fill_response_header(Http_stateCode stateCode, struct stat * p_sbuf);
+
     struct HttpProtocol{
-        Http_method method,
-        std::string url,
-        Http_version version,
-        std::unordered_map<string,string> header;
-    }
+        Http_method method;
+        std::string url;
+        Http_version version;
+        std::unordered_map<std::string, std::string> header;
+    };
 
 private:
     int m_sockfd;

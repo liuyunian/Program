@@ -1,5 +1,10 @@
+#include <iostream>
+
 #include <stdio.h> // perror
 #include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
 
 #include <sys/socket.h>
 
@@ -30,6 +35,13 @@ int Server::run(){
     serv_addr.sin_port = htons(m_port);
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
+    int on = 1;
+    ret = setsockopt(m_listenSockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)); // 这里的意义是什么？？
+	if(ret < 0){
+        perror("设置监听套接字失败");
+        exit(1);
+    }
+
     ret = bind(m_listenSockfd, (struct sockaddr * )&serv_addr, sizeof(struct sockaddr));
     if(ret < 0){
         perror("监听套接字绑定地址失败");
@@ -59,7 +71,6 @@ int Server::run(){
 
     int eventNum = 0;
     int sockfd = 0; // 记录发生事件对应的fd
-    int connfd = 0; // 记录accept返回的连接对应的sockfd
 
     Connection * conn;
 
@@ -73,12 +84,12 @@ int Server::run(){
                 perror("epoll_wait()执行失败");
             }
         }
-        
+
         for(int i = 0; i < eventNum; ++ i){
             sockfd = m_events[i].data.fd;
             if(m_events[i].events & EPOLLIN){ // 读事件
                 if(sockfd == m_listenSockfd){ // 监听套接字事件
-                    connfd = accept(serv_fd, (struct sockaddr * )NULL, NULL);
+                    int connfd = accept(m_listenSockfd, (struct sockaddr * )NULL, NULL);
                     if(connfd < 0){
                         perror("accept()执行失败");
                         continue;
@@ -90,19 +101,25 @@ int Server::run(){
                     conn->m_event.events = EPOLLIN | EPOLLET;
                     conn->m_event.data.fd = connfd;
                     m_connectionStore.insert({connfd, conn});
-                    ret = epoll_ctl(m_epfd, EPOLL_CTL_ADD, connfd, &conn.m_event);
+                    ret = epoll_ctl(m_epfd, EPOLL_CTL_ADD, connfd, &conn->m_event);
                     if(ret < 0){
                         perror("向epoll对象添加监听套接字事件失败");
                         continue;
                     }
 
-                    perror("一个连接接入");
+                    std::cout << "一个连接接入" << std::endl;
                 }
                 else{ // 连接套接字事件
-                    ret = m_connectionStore[connfd].parse();
-                    if(ret == 0){
-                        delete m_connectionStore[connfd];
-                        m_connectionStore.erase(connfd);
+                    ret = m_connectionStore[sockfd]->parse();
+                    if(ret < 0){
+                        continue;
+                    }
+                    else if(ret == 0){
+                        delete m_connectionStore[sockfd];
+                        m_connectionStore.erase(sockfd);
+                    }
+                    else{
+                        m_connectionStore[sockfd]->process_request();
                     }
                 }
             }
