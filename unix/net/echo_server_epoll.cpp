@@ -81,10 +81,10 @@ int main(){
 
     int connfd = -1;
     int nready;                                     // 记录epoll函数返回的事件数
-    char buf[BUFFER_SZ];
+    char buf[BUFFER_SZ] = {0};                      // 应用层的接收和发送缓存
     ssize_t len = 0;                                // 记录recv()函数的返回值
     std::vector<int> clientVec;                     // 保存客户端对应的连接套接字
-    std::vector<struct epoll_event> reventVec(16);   // 保存epoll_wait()函数返回的事件，初始大小设置为16，之后可变长
+    std::vector<struct epoll_event> reventVec(16);  // 保存epoll_wait()函数返回的事件，初始大小设置为16，之后可变长
     for(;;){
         nready = epoll_wait(epfd, reventVec.data(), reventVec.size(), -1);
         if(nready <= 0){
@@ -101,7 +101,7 @@ int main(){
         }
 
         for(auto & revent : reventVec){
-            if(revent.events & POLLIN){ // 发生了可读事件
+            if(revent.events & EPOLLIN){ // 发生了可读事件
                 if(revent.data.fd == listenfd){
                     connfd = accept(listenfd, (struct sockaddr *)(NULL), NULL);
                     if(connfd < 0){
@@ -129,22 +129,27 @@ int main(){
 
                     event.data.fd = connfd;
                     event.events = EPOLLIN; // 关注连接套接字的读事件，LT工作模式
-                    ret = epoll_ctl(epfd, EPOLL_CTL_ADD, listenfd, &event);
+                    ret = epoll_ctl(epfd, EPOLL_CTL_ADD, connfd, &event);
                     if(ret < 0){
                         perror("调用epoll_ctl()函数想epoll对象添加连接套接字的读事件 -- 失败");
                         continue;
                     }
                 }
                 else{
-                    connfd = iter->fd;
+                    connfd = revent.data.fd;
                     len = recv(connfd, buf, BUFFER_SZ, 0);
                     if(len < 0){
                         perror("调用recv()接收数据失败");
                     }
                     else if(len == 0){ // 断开连接
                         printf("客户端断开连接\n");
-                        iter = pollfds.erase(iter);
-                        -- iter;
+                        // 从clientVec移除
+                        for(auto iter = clientVec.begin(); iter != clientVec.end(); ++ iter){
+                            if(*iter == connfd){
+                                clientVec.erase(iter);
+                                break;
+                            }
+                        }
 
                         close(connfd);
                         continue;

@@ -1,0 +1,18 @@
+muduo是一个基于reactor模式的多线程C++网络库
+特点：
+
+
+
+安装
+sudo apt-get install cmake
+sudo apt-get install libboost-dev
+
+git clone https://github.com/chenshuo/muduo.git
+
+cd muduo
+./build.sh
+
+库和框架的区别
+库中的类或者接口相对比较独立，在使用时往往是作为局部的代码，这就是需要编写一些“胶水代码”来完成业务逻辑
+框架则比较整体化，在使用时不需要编写胶水代码组织整个程序，而是编写框架的回调函数
+
