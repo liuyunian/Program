@@ -11,7 +11,9 @@
 #include <sys/socket.h> // socket相关
 #include <arpa/inet.h>  // sockaddr_in
 
+#define LISTEN_PORT 9000
 #define BACKLOG 1024
+#define BUFFER_SZ 1024
 
 static void set_nonblocking(int sockfd);
 
@@ -23,6 +25,8 @@ int main(){
      * 为了服务器能够长时间稳定原型，这里忽略该信号
     */
     signal(SIGPIPE, SIG_IGN);
+
+    int idlefd = open("/dev/null", O_RDONLY | O_CLOEXEC); // 预留文件描述符
 
     int listenfd = socket(AF_INET, SOCK_STREAM, 0);
     if(listenfd < 0){
@@ -36,7 +40,7 @@ int main(){
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(5188);
+    serv_addr.sin_port = htons(LISTEN_PORT);
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     int on = 1, ret = 0;
@@ -67,9 +71,10 @@ int main(){
     std::vector<struct pollfd> pollfds;
     pollfds.push_back(pd);
 
-    int connfd;
+    int connfd = -1;
     int nready; // 记录poll函数返回的事件数
-    char buf[1024];
+    char buf[BUFFER_SZ];
+    ssize_t len = 0; // 记录recv()函数的返回值
 
     for(;;){
         nready = poll(pollfds.data(), pollfds.size(), -1);
@@ -94,6 +99,15 @@ int main(){
                      * 进程描述符已达到上限
                      * 如何处理
                     */
+
+                    close(idlefd); // 关闭预留描述符，进程有了一个空闲描述符
+                    connfd = accept(listenfd, (struct sockaddr *)(NULL), NULL); // 此时可以正确的接受连接
+                    close(connfd); // 服务器端优雅的关闭连接
+                    
+                    idlefd = open("/dev/null", O_RDONLY | O_CLOEXEC); // 再次预留文件描述符
+                    
+                    continue;
+
                 }
 
                 perror("accept()函数执行出错");
@@ -117,11 +131,11 @@ int main(){
             if(iter->revents & POLLIN){
                 -- nready;
                 connfd = iter->fd;
-                ret = recv(connfd, buf, 1024, 0);
-                if(ret < 0){
+                len = recv(connfd, buf, BUFFER_SZ, 0);
+                if(len < 0){
                     perror("调用recv()接收数据失败");
                 }
-                else if(ret == 0){ // 断开连接
+                else if(len == 0){ // 断开连接
                     printf("客户端断开连接\n");
                     iter = pollfds.erase(iter);
                     -- iter;
@@ -131,6 +145,7 @@ int main(){
                 }
 
                 send(connfd, buf, strlen(buf), 0);
+                memset(buf, 0, BUFFER_SZ);
             }
         }
     }
