@@ -44,3 +44,6 @@
 *.aac
 *.h264
 
+# build
+*/build
+
