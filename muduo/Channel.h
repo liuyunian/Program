@@ -1,6 +1,7 @@
 #ifndef CHANNEL_H_
 #define CHANNEL_H_
 
+#include <memory>
 #include <functional>
 
 #include <tools_cxx/noncopyable.h>
@@ -74,7 +75,36 @@ public:
 
     void handleEvent(Timestamp receiveTime);
 
-    void tie();
+    // 将被shared_ptr管理的channel持有者与该channel绑定
+    // 防止channel持有者在处理事件中被销毁
+    void tie(const std::shared_ptr<void> &);
+
+    void enable_reading(){
+        m_events |= k_readEvent;
+        update();
+    }
+
+    void disable_reading(){
+        m_events &= ~k_readEvent;
+        update();
+    }
+
+    void enable_writing(){
+        m_events |= k_writeEvent;
+        update();
+    }
+
+    void disable_writing(){
+        m_events &= ~k_writeEvent;
+        update();
+    }
+
+private:
+    void handleEvent_with_guard(Timestamp receiveTime);
+
+    void update();
+
+    void rmove();
 
 private:
     static const int k_noneEvent;   // 空事件常量
@@ -86,6 +116,11 @@ private:
     int m_events;       // 关注的事件
     int m_revents;      // poll/epoll返回的事件
     int m_index;        // used by Poller
+    bool m_logHup;      // ??
+
+    std::weak_ptr<void> m_tie;  // 指向绑定的对象
+    bool m_tied;                // 记录该Channel对象是否已经绑定
+    bool m_eventHandling;       // 是否正在处理事件
 
     ReadEventCallback m_readCallback;   // 读事件回调函数
     EventCallback m_writeCallback;      // 写事件回调函数
