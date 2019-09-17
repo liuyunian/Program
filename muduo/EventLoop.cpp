@@ -8,7 +8,8 @@ __thread EventLoop * t_loopInThisThread = nullptr;
 
 EventLoop::EventLoop() : 
     m_looping(false),
-    m_threadID(CurrentThread::get_tid())
+    m_threadID(CurrentThread::get_tid()),
+    m_poller()
 {
     LOG_INFO("EventLoop %p created in thread %d", this, m_threadID);
  

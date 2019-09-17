@@ -14,7 +14,7 @@ Channel::Channel(EventLoop * loop, int fd) :
     m_revents(0),
     m_index(-1),
     m_tied(false),
-    m_eventHandling(false])
+    m_eventHandling(false)
 {
 
 }
@@ -43,7 +43,7 @@ void Channel::tie(const std::shared_ptr<void> & obj){
     m_tied = true;
 }
 
-void handleEvent_with_guard(Timestamp receiveTime){
+void Channel::handleEvent_with_guard(Timestamp receiveTime){
     m_eventHandling = true;
 
     if((m_revents & POLLHUP) && !(m_revents & POLLIN)){ // POLLHUP事件并且不是POLLIN事件
@@ -66,7 +66,7 @@ void handleEvent_with_guard(Timestamp receiveTime){
         }
     }
 
-    if(m_revents & (POLLIN | POLLPRI | POLLRDHUP)){      // 读事件 或者 POLLPRI高优先级可读事件 或者 POLLRDHUP事件（？？？）
+    if(m_revents & (POLLIN | POLLPRI)){      // 读事件 或者 POLLPRI高优先级可读事件
         if(m_readCallback){
             m_readCallback();
         }
@@ -82,7 +82,7 @@ void handleEvent_with_guard(Timestamp receiveTime){
 }
 
 void Channel::update(){
-    m_loop->updateChannel(this);
+    m_loop->update_channel(this);
 }
 
 void Channel::rmove(){

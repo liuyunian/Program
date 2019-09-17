@@ -4,9 +4,11 @@
 #include <memory>
 
 #include <stdlib.h>
-
 #include <tools_cxx/noncopyable.h>
 #include <tools_cxx/CurrentThread.h>
+
+#include "Channel.h"
+#include "Poller.h"
 
 class EventLoop : noncopyable{
 public:
