@@ -1,11 +1,12 @@
-#include <poll.h>
+#include <poll.h>           // poll POLLIN ...
+#include <assert.h>         // assert
 #include <tools_cxx/log.h>
 
 #include "Channel.h"
 
-const int k_noneEvent = 0;
-const int k_readEvent = POLL_IN | POLL_PRI;
-const int k_writeEvent = POLL_OUT;
+const int Channel::k_noneEvent = 0;
+const int Channel::k_readEvent = POLLIN | POLLPRI;
+const int Channel::k_writeEvent = POLLOUT;
 
 Channel::Channel(EventLoop * loop, int fd) : 
     m_loop(loop),
@@ -48,7 +49,7 @@ void Channel::handleEvent_with_guard(Timestamp receiveTime){
 
     if((m_revents & POLLHUP) && !(m_revents & POLLIN)){ // POLLHUP事件并且不是POLLIN事件
         if(m_logHup){
-            LOG_WARN("Channel::handle_event() POLLHUP");
+            LOG_WRAN("Channel::handle_event() POLLHUP");
         }
 
         if(m_closeCallback){
@@ -57,7 +58,7 @@ void Channel::handleEvent_with_guard(Timestamp receiveTime){
     }
 
     if(m_revents & POLLNVAL){                           // POLLNVAL事件：文件描述符不是一个打开的文件
-        LOG_WARN("Channel::handle_event() POLLNVAL");
+        LOG_WRAN("Channel::handle_event() POLLNVAL");
     }
 
     if(m_revents & (POLLERR | POLLNVAL)){               // POLLERR事件或者POLLNVAL事件
@@ -66,9 +67,9 @@ void Channel::handleEvent_with_guard(Timestamp receiveTime){
         }
     }
 
-    if(m_revents & (POLLIN | POLLPRI)){      // 读事件 或者 POLLPRI高优先级可读事件
+    if(m_revents & (POLLIN | POLLPRI | POLLRDHUP)){      // 读事件 或者 POLLPRI高优先级可读事件 | POLLRDHUP连接对方关闭连接
         if(m_readCallback){
-            m_readCallback();
+            m_readCallback(receiveTime);
         }
     }
 

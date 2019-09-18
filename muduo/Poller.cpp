@@ -11,7 +11,7 @@ Poller * Poller::new_default_Poller(EventLoop * loop){
     if(::getenv("USE_POLL")){
         return new PollPoller(loop);
     }
-    else{
+    else{                               // 默认采用的IO复用方式是poll
         return new EPollPoller(loop);
     }
 }

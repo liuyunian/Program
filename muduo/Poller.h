@@ -1,6 +1,8 @@
 #ifndef POLLER_H_
 #define POLLER_H_
 
+#include <vector>
+
 #include <tools_cxx/noncopyable.h>
 #include <tools_cxx/Timestamp.h>
 
@@ -34,6 +36,10 @@ public:
      * @param channel
     */
     virtual void remove_channel(Channel * channel) = 0; // 纯虚函数
+
+    void assert_in_loopThread(){
+        m_ownerLoop->assert_in_loopThread();
+    }
 
     /**
      * @brief 创建默认的Poller实例

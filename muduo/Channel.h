@@ -9,12 +9,10 @@
 
 #include "EventLoop.h"
 
-class EventLoop; // 声明
-
-class Channel : noncopyable{ // 不可复制
+class Channel : noncopyable{                                    // 不可复制
 public:
-    typedef std::function<void()> EventCallback; // 事件回调函数类型
-    typedef std::function<void(Timestamp)> ReadEventCallback; // 读事件回调函数类型，需要时间戳参数
+    typedef std::function<void()> EventCallback;                // 事件回调函数类型
+    typedef std::function<void(Timestamp)> ReadEventCallback;   // 读事件回调函数类型，需要时间戳参数
 
     Channel(EventLoop * loop, int fd);
     ~Channel();
@@ -115,7 +113,7 @@ private:
     const int m_fd;     // 负责的文件描述符，不负责关闭该fd
     int m_events;       // 关注的事件
     int m_revents;      // poll/epoll返回的事件
-    int m_index;        // used by Poller
+    int m_index;        // used by Poller，既用来表征在m_pollfdList中的位置又用于区分add/update操作
     bool m_logHup;      // ??
 
     std::weak_ptr<void> m_tie;  // 指向绑定的对象
