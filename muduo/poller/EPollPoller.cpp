@@ -8,6 +8,15 @@
 
 #include "EPollPoller.h"
 
+// On Linux, the constants of poll(2) and epoll(4)
+// are expected to be the same.
+static_assert(EPOLLIN == POLLIN,        "epoll uses same flag values as poll");
+static_assert(EPOLLPRI == POLLPRI,      "epoll uses same flag values as poll");
+static_assert(EPOLLOUT == POLLOUT,      "epoll uses same flag values as poll");
+static_assert(EPOLLRDHUP == POLLRDHUP,  "epoll uses same flag values as poll");
+static_assert(EPOLLERR == POLLERR,      "epoll uses same flag values as poll");
+static_assert(EPOLLHUP == POLLHUP,      "epoll uses same flag values as poll");
+
 const int k_new = -1;       // 新的Channel
 const int k_added = 1;      // 已经添加过的Channel
 const int k_deleted = 2;    // 已经标记删除的Channel
