@@ -8,4 +8,5 @@ LINK_DIRECTORIES(/usr/local/lib)
 ADD_EXECUTABLE(asio_signal asio_signal.cpp)
 
 ADD_EXECUTABLE(asio_timer asio_timer.cpp)
-# TARGET_LINK_LIBRARIES(asio_signal boost_system boost_thread)
+
+ADD_EXECUTABLE(ptree_info ptree_info.cpp)
