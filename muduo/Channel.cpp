@@ -86,7 +86,7 @@ void Channel::update(){
     m_loop->update_channel(this);
 }
 
-void Channel::rmove(){
+void Channel::remove(){
     assert(is_noneEvents()); // 断言此时关注的事件为空
     m_loop->remove_channel(this);
 }
