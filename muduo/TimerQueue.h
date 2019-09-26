@@ -25,12 +25,22 @@ public:
 
 private:
     typedef std::pair<Timestamp, Timer *> TimerEntry;
-    typedef std::set<Entry> TimerSet;
+    typedef std::set<TimerEntry> TimerSet;
 
     typedef std::pair<Timer *, int64_t> ActiveTimerEntry;
-    typedef std::set<ActiveTimerEntry> ActviveTimerSet;
+    typedef std::set<ActiveTimerEntry> ActiveTimerSet;
+
+    void add_timer_inLoop(Timer * timer);
+
+    void cancel_timer_inLoop(TimerId timerId);
+
+    bool insert(Timer * timer);
 
     void handle_readEvent();                                                    // m_timerfd可读事件发生时的回调函数
+
+    std::vector<TimerEntry> getExpired(Timestamp now);
+
+    void reset(const std::vector<TimerEntry> & expired, Timestamp now);
 
 private:
     EventLoop * m_loop;

@@ -97,14 +97,12 @@ public:
         update();
     }
 
-    
+    void remove();
 
 private:
     void handleEvent_with_guard(Timestamp receiveTime);
 
     void update();
-
-    void remove();
 
 private:
     static const int k_noneEvent;   // 空事件常量

@@ -21,7 +21,7 @@ Channel::Channel(EventLoop * loop, int fd) :
 }
 
 Channel::~Channel(){
-
+    assert(!m_eventHandling);
 }
 
 void Channel::handleEvent(Timestamp receiveTime){
@@ -49,7 +49,7 @@ void Channel::handleEvent_with_guard(Timestamp receiveTime){
 
     if((m_revents & POLLHUP) && !(m_revents & POLLIN)){ // POLLHUP事件并且不是POLLIN事件
         if(m_logHup){
-            LOG_WRAN("Channel::handle_event() POLLHUP");
+            LOG_WARN("Channel::handle_event() POLLHUP");
         }
 
         if(m_closeCallback){
@@ -58,7 +58,7 @@ void Channel::handleEvent_with_guard(Timestamp receiveTime){
     }
 
     if(m_revents & POLLNVAL){                           // POLLNVAL事件：文件描述符不是一个打开的文件
-        LOG_WRAN("Channel::handle_event() POLLNVAL");
+        LOG_WARN("Channel::handle_event() POLLNVAL");
     }
 
     if(m_revents & (POLLERR | POLLNVAL)){               // POLLERR事件或者POLLNVAL事件

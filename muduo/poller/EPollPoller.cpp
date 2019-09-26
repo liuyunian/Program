@@ -1,6 +1,7 @@
 #include <unistd.h>     // close
 #include <string.h>     // memset
 #include <assert.h>     // assert
+#include <poll.h>
 #include <sys/epoll.h>
 
 #include <tools_cxx/log.h>
