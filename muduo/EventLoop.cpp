@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iostream>
 
 #include <poll.h>           // poll
 #include <assert.h>         // assert
@@ -7,6 +8,7 @@
 #include "EventLoop.h"
 #include "Channel.h"
 #include "Poller.h"
+#include "TimerQueue.h"
 
 __thread EventLoop * t_loopInThisThread = nullptr;
 
@@ -14,8 +16,10 @@ const int k_pollTimeoutMs = 10000; // 10秒
 
 EventLoop::EventLoop() : 
     m_looping(false),
+    m_quit(false),
     m_threadID(CurrentThread::get_tid()),
-    m_poller(Poller::new_default_Poller(this))
+    m_poller(Poller::new_default_Poller(this)),
+    m_timerQueue(new TimerQueue(this))
 {
     LOG_INFO("EventLoop %p created in thread %d", this, m_threadID);
  
@@ -63,6 +67,24 @@ void EventLoop::quit(){
     if(!is_in_loopThread()){
 
     }
+}
+
+TimerId EventLoop::run_at(const Timestamp time, const TimerCallback & cb){
+    return m_timerQueue->add_timer(cb, time, 0);
+}
+
+TimerId EventLoop::run_after(double delay, const TimerCallback & cb){
+    Timestamp time(add_time(Timestamp::now(), delay));
+    return run_at(time, cb);
+}
+
+TimerId EventLoop::run_every(double interval, const TimerCallback & cb){
+    Timestamp time(add_time(Timestamp::now(), interval));
+    return m_timerQueue->add_timer(cb, time, interval);
+}
+
+void EventLoop::cancel(TimerId timerId){
+    m_timerQueue->cancel(timerId);
 }
 
 void EventLoop::update_channel(Channel * channel){

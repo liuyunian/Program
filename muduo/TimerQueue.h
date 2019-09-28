@@ -3,6 +3,7 @@
 
 #include <set>
 #include <atomic>
+#include <functional>
 
 #include <tools_cxx/Timestamp.h>
 #include <tools_cxx/noncopyable.h>
@@ -10,6 +11,8 @@
 #include "Channel.h"
 #include "TimerId.h"
 #include "Timer.h"
+
+typedef std::function<void()> TimerCallback;
 
 class EventLoop;
 
@@ -38,9 +41,9 @@ private:
 
     void handle_readEvent();                                                    // m_timerfd可读事件发生时的回调函数
 
-    std::vector<TimerEntry> getExpired(Timestamp now);
+    std::vector<TimerEntry> get_expired(Timestamp now);
 
-    void reset(const std::vector<TimerEntry> & expired, Timestamp now);
+    void reset(const std::vector<TimerEntry> & expiredTimers, Timestamp now);
 
 private:
     EventLoop * m_loop;

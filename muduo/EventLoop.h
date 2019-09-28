@@ -4,14 +4,20 @@
 #include <memory>
 #include <atomic>
 #include <vector>
+#include <functional>
 
 #include <stdlib.h>
 #include <tools_cxx/Timestamp.h>
 #include <tools_cxx/noncopyable.h>
 #include <tools_cxx/CurrentThread.h>
 
+#include "TimerId.h"
+
 class Channel;
 class Poller;
+class TimerQueue;
+
+typedef std::function<void()> TimerCallback;
 
 class EventLoop : noncopyable{
 public:
@@ -22,6 +28,19 @@ public:
     void loop();
 
     void quit();
+
+    Timestamp get_pollReturnTime(){
+        return m_pollReturnTime;
+    }
+
+    // timer
+    TimerId run_at(const Timestamp time, const TimerCallback & cb);
+
+    TimerId run_after(double delay, const TimerCallback & cb);
+
+    TimerId run_every(double interval, const TimerCallback & cb);
+
+    void cancel(TimerId timerId);
 
     void update_channel(Channel * channel); // 在Poller中添加或者更新通道
 
@@ -49,6 +68,9 @@ private:
 
     Timestamp m_pollReturnTime;                 // 记录m_poller->poll()函数返回的时间戳
     std::unique_ptr<Poller> m_poller;           // IO复用对象
+
+    std::unique_ptr<TimerQueue> m_timerQueue;
+
     std::vector<Channel *> m_activeChannels;    // Poller返回的活动通道
     Channel * m_currentActiveChannel;           // 当前正在处理的活动通道
 };

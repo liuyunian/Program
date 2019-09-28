@@ -11,7 +11,7 @@ typedef std::function<void()> TimerCallback;
 
 class Timer : noncopyable {
 public:
-    Timer(TimerCallback cb, Timestamp when, double interval);
+    Timer(TimerCallback & cb, Timestamp when, double interval);
 
     ~Timer() = default;
 

@@ -49,7 +49,7 @@ Timestamp EPollPoller::poll(int timeoutMs, std::vector<Channel *> * activeChanne
         LOG_INFO("nothing happended");
     }
     else{
-        LOG_INFO("%d events happended", numEvents);
+        // LOG_INFO("%d events happended", numEvents);
         fill_activeChannels(numEvents, activeChannels);
         if(numEvents == m_eventList.size()){            // 需要扩容
             m_eventList.resize(m_eventList.size() * 2);
@@ -80,7 +80,7 @@ void EPollPoller::update_channel(Channel * channel){
 
     int index = channel->get_index();
     int channel_fd = channel->get_fd();
-    LOG_INFO("fd = %d events = %d", channel_fd, channel->get_events());
+    // LOG_INFO("fd = %d events = %d", channel_fd, channel->get_events());
 
     if(index == k_new || index == k_deleted){
         if(index == k_new){                                                     // 新Channel
@@ -115,7 +115,7 @@ void EPollPoller::remove_channel(Channel * channel){
 
     int index = channel->get_index();
     int channel_fd = channel->get_fd();
-    LOG_INFO("fd = %d events = %d", channel_fd, channel->get_events());
+    // LOG_INFO("fd = %d events = %d", channel_fd, channel->get_events());
 
     assert(m_channelStore.find(channel_fd) != m_channelStore.end());
     assert(m_channelStore[channel_fd] == channel);

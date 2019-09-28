@@ -24,6 +24,6 @@ private:
 private:
     Timer * m_timer;
     int64_t m_sequence;
-}
+};
 
 #endif // TIMEIDR_H_

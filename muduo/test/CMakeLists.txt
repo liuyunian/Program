@@ -1,8 +1,11 @@
 ADD_EXECUTABLE(EventLoop_test1 EventLoop_test1.cpp)
-TARGET_LINK_LIBRARIES(EventLoop_test1 muduo_net pthread)
+TARGET_LINK_LIBRARIES(EventLoop_test1 muduo_net tools_base tools_log pthread)
 
 ADD_EXECUTABLE(EventLoop_test2 EventLoop_test2.cpp)
-TARGET_LINK_LIBRARIES(EventLoop_test2 muduo_net pthread)
+TARGET_LINK_LIBRARIES(EventLoop_test2 muduo_net tools_base tools_log pthread)
 
 ADD_EXECUTABLE(EventLoop_test3 EventLoop_test3.cpp)
-TARGET_LINK_LIBRARIES(EventLoop_test3 muduo_net)
+TARGET_LINK_LIBRARIES(EventLoop_test3 muduo_net tools_base tools_log)
+
+ADD_EXECUTABLE(timer_test timer_test.cpp)
+TARGET_LINK_LIBRARIES(timer_test muduo_net tools_base tools_log)
