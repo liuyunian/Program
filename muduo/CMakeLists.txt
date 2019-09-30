@@ -5,6 +5,7 @@ PROJECT(Muduo)
 SET(NET_SRCS 
     Channel.cpp
     EventLoop.cpp
+    EventLoopThread.cpp
     Poller.cpp
     Timer.cpp
     TimerQueue.cpp
@@ -23,6 +24,7 @@ INSTALL(TARGETS muduo_net ARCHIVE DESTINATION lib)
 set(HEADERS
     Channel.h
     EventLoop.h
+    EventLoopThread.h
     TimerId.h)
 
 INSTALL(FILES ${HEADERS} DESTINATION include/muduo/net)

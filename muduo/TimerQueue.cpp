@@ -72,13 +72,13 @@ TimerQueue::~TimerQueue(){
 
 TimerId TimerQueue::add_timer(TimerCallback cb, Timestamp when, double interval){
     Timer * timer = new Timer(cb, when, interval);
-    add_timer_inLoop(timer);
+    m_loop->run_in_loop(std::bind(&TimerQueue::add_timer_inLoop, this, timer));
 
     return TimerId(timer, timer->get_sequence());
 }
 
 void TimerQueue::cancel(TimerId timerId){
-    cancel_timer_inLoop(timerId);
+    m_loop->run_in_loop(std::bind(&TimerQueue::cancel_timer_inLoop, this, timerId));
 }
 
 void TimerQueue::add_timer_inLoop(Timer * timer){
