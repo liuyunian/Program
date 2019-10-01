@@ -10,3 +10,6 @@ ADD_EXECUTABLE(asio_signal asio_signal.cpp)
 ADD_EXECUTABLE(asio_timer asio_timer.cpp)
 
 ADD_EXECUTABLE(ptree_info ptree_info.cpp)
+
+ADD_EXECUTABLE(filesystem_path filesystem_path.cpp)
+TARGET_LINK_LIBRARIES(filesystem_path boost_filesystem)
