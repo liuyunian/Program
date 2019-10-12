@@ -1,7 +1,7 @@
 #ifndef TIMEIDR_H_
 #define TIMEIDR_H_
 
-#include <tools_cxx/copyable.h>
+#include <tools/base/copyable.h>
 
 class Timer;
 

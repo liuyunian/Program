@@ -1,6 +1,6 @@
 #include <poll.h>           // poll POLLIN ...
 #include <assert.h>         // assert
-#include <tools_cxx/log.h>
+#include <tools/log/log.h>
 
 #include "Channel.h"
 

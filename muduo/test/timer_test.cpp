@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <unistd.h> // sleep
 
-#include <tools_cxx/Timestamp.h>
-#include <tools_cxx/CurrentThread.h>
+#include <tools/base/Timestamp.h>
+#include <tools/base/CurrentThread.h>
 
-#include <muduo/net/TimerId.h>
-#include <muduo/net/EventLoop.h>
+#include <muduo/TimerId.h>
+#include <muduo/EventLoop.h>
 
 int cnt = 0;
 EventLoop * g_loop;

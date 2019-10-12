@@ -1,9 +1,9 @@
 #include <algorithm>    // iter_swap
 #include <assert.h>     // assert
-#include <tools_cxx/log.h>
+#include <tools/log/log.h>
 
 #include "PollPoller.h"
-#include "../Channel.h"
+#include "Channel.h"
 
 PollPoller::PollPoller(EventLoop* loop)
   : Poller(loop){}
@@ -17,10 +17,10 @@ Timestamp PollPoller::poll(int timeoutMs, std::vector<Channel *> * activeChannel
         LOG_SYSERR("PollPoller::poll()");
     }
     else if(numEvents == 0){
-        LOG_INFO("nothing happended");
+        LOG_DEBUG("nothing happended");
     }
     else{
-        // LOG_INFO("%d events happended", numEvents);
+        LOG_DEBUG("%d events happended", numEvents);
         fill_activeChannels(numEvents, activeChannels);
     }
 
@@ -49,7 +49,7 @@ void PollPoller::update_channel(Channel * channel){
     assert_in_loopThread();                                                 // 从父类Poller继承来的成员函数
 
     int channel_fd = channel->get_fd();
-    // LOG_INFO("fd = %d events = %d", channel_fd, channel->get_events());
+    LOG_DEBUG("fd = %d events = %d", channel_fd, channel->get_events());
     if(channel->get_index() < 0){                                           // index < 0表示是一个新通道，也就是说这里的操作是添加而不是修改
         assert(m_channelStore.find(channel_fd) == m_channelStore.end());    // 断言在m_channelStore中确实没有该channel
         m_channelStore.insert({channel_fd, channel});
@@ -84,7 +84,7 @@ void PollPoller::remove_channel(Channel * channel){
     assert_in_loopThread();                                             // 从父类Poller继承来的成员函数
 
     int channel_fd = channel->get_fd();
-    // LOG_INFO("fd = %d events = %d", channel_fd, channel->get_events());
+    LOG_DEBUG("fd = %d events = %d", channel_fd, channel->get_events());
     
     assert(m_channelStore.find(channel_fd) != m_channelStore.end());    // 断言key = channel_fd在m_channelStore中存在
     assert(m_channelStore[channel_fd] == channel);                      // 断言对应的value = 参数channel

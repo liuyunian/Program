@@ -2,9 +2,9 @@
 
 #include <unistd.h>
 
-#include <muduo/net/EventLoop.h>
-#include <muduo/net/EventLoopThread.h>
-#include <tools_cxx/CurrentThread.h>
+#include <muduo/EventLoop.h>
+#include <muduo/EventLoopThread.h>
+#include <tools/base/CurrentThread.h>
 
 void print(){
     std::cout << "print(): pid = " << getpid() << ", tid = " << CurrentThread::get_tid() << std::endl;

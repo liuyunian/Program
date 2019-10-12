@@ -2,9 +2,9 @@
 #include <thread>
 
 #include <unistd.h> // getpid
-#include <tools_cxx/CurrentThread.h>
+#include <tools/base/CurrentThread.h>
 
-#include <muduo/net/EventLoop.h>
+#include <muduo/EventLoop.h>
 
 EventLoop * g_loop;
 

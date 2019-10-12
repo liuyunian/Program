@@ -4,8 +4,8 @@
 #include <memory>
 #include <functional>
 
-#include <tools_cxx/noncopyable.h>
-#include <tools_cxx/Timestamp.h>
+#include <tools/base/noncopyable.h>
+#include <tools/base/Timestamp.h>
 
 #include "EventLoop.h"
 
@@ -94,6 +94,11 @@ public:
 
     void disable_writing(){
         m_events &= ~k_writeEvent;
+        update();
+    }
+
+    void disable_all(){
+        m_events = k_noneEvent;
         update();
     }
 

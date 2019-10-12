@@ -5,7 +5,7 @@
 #include <unistd.h>         // close
 #include <sys/timerfd.h>    // timerfd_*
 
-#include <tools_cxx/log.h>
+#include <tools/log/log.h>
 
 #include "TimerQueue.h"
 

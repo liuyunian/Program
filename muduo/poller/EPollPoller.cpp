@@ -4,8 +4,8 @@
 #include <poll.h>
 #include <sys/epoll.h>
 
-#include <tools_cxx/log.h>
-#include <tools_cxx/Timestamp.h>
+#include <tools/log/log.h>
+#include <tools/base/Timestamp.h>
 
 #include "EPollPoller.h"
 
@@ -24,13 +24,13 @@ const int k_deleted = 2;    // 已经标记删除的Channel
 
 const int EPollPoller::k_initEventListSize = 16;
 
-EPollPoller::EPollPoller(EventLoop * loop) : 
+EPollPoller::EPollPoller(EventLoop* loop) : 
     Poller(loop),
     m_epfd(::epoll_create1(EPOLL_CLOEXEC)),
     m_eventList(k_initEventListSize)
 {
     if(m_epfd < 0){
-        LOG_SYSFATAL("Failed to created epfd");
+        LOG_SYSFATAL("Failed to created epfd in EPollPoller::EPollPoller(EventLoop*)");
     }
 }
 
@@ -38,20 +38,26 @@ EPollPoller::~EPollPoller(){
     close(m_epfd);
 }
 
-Timestamp EPollPoller::poll(int timeoutMs, std::vector<Channel *> * activeChannels){
+Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels){
     int numEvents = ::epoll_wait(m_epfd, m_eventList.data(), m_eventList.size(), timeoutMs);
-    Timestamp now(Timestamp::now());
+
+    int savedErrno = errno;
+    Timestamp now(Timestamp::now());                        // 可能会改变errno
 
     if(numEvents < 0){
-        LOG_SYSERR("EPollPoller::poll()");
+        if(savedErrno != EINTR){                            // EINTR错误不用报错
+            errno = savedErrno;
+            LOG_SYSERR("EPollPoller::poll()");
+        }
     }
     else if(numEvents == 0){
-        LOG_INFO("nothing happended");
+        LOG_DEBUG("nothing happended");
     }
     else{
-        // LOG_INFO("%d events happended", numEvents);
+        LOG_DEBUG("%d events happended", numEvents);
+
         fill_activeChannels(numEvents, activeChannels);
-        if(numEvents == m_eventList.size()){            // 需要扩容
+        if(numEvents == m_eventList.size()){                // 需要扩容
             m_eventList.resize(m_eventList.size() * 2);
         }
     }
@@ -59,13 +65,13 @@ Timestamp EPollPoller::poll(int timeoutMs, std::vector<Channel *> * activeChanne
     return now;
 }
 
-void EPollPoller::fill_activeChannels(int numEvents, std::vector<Channel *> * activeChannels) const {
+void EPollPoller::fill_activeChannels(int numEvents, ChannelList* activeChannels) const {
     assert(numEvents <= m_eventList.size());
 
-    Channel * channel;
-    std::map<int, Channel *>::const_iterator iter_ch;
+    Channel* channel;
+    std::map<int, Channel*>::const_iterator iter_ch;
     for(int i = 0; i < numEvents; ++ i){
-        channel = static_cast<Channel *>(m_eventList[i].data.ptr);
+        channel = static_cast<Channel*>(m_eventList[i].data.ptr);
         iter_ch = m_channelStore.find(channel->get_fd());
         assert(iter_ch != m_channelStore.end());
         assert(iter_ch->second == channel);
@@ -78,9 +84,9 @@ void EPollPoller::fill_activeChannels(int numEvents, std::vector<Channel *> * ac
 void EPollPoller::update_channel(Channel * channel){
     assert_in_loopThread();                                                     // 从父类Poller继承来的成员函数
 
-    int index = channel->get_index();
+    const int index = channel->get_index();
     int channel_fd = channel->get_fd();
-    // LOG_INFO("fd = %d events = %d", channel_fd, channel->get_events());
+    LOG_DEBUG("fd = %d events = %d index = %d", channel_fd, channel->get_events(), index);
 
     if(index == k_new || index == k_deleted){
         if(index == k_new){                                                     // 新Channel
@@ -100,7 +106,7 @@ void EPollPoller::update_channel(Channel * channel){
         assert(m_channelStore[channel_fd] == channel);
         assert(index == k_added);                                               // 断言当前的channel是已经添加过的
 
-        if(channel->is_noneEvents()){                                             // Channel关注的事件为空
+        if(channel->is_noneEvents()){                                           // Channel关注的事件为空
             update(EPOLL_CTL_DEL, channel);
             channel->set_index(k_deleted);
         }
@@ -115,7 +121,7 @@ void EPollPoller::remove_channel(Channel * channel){
 
     int index = channel->get_index();
     int channel_fd = channel->get_fd();
-    // LOG_INFO("fd = %d events = %d", channel_fd, channel->get_events());
+    LOG_DEBUG("fd = %d events = %d index = %d", channel_fd, channel->get_events(), index);
 
     assert(m_channelStore.find(channel_fd) != m_channelStore.end());
     assert(m_channelStore[channel_fd] == channel);
