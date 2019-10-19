@@ -1,9 +1,10 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <mutex>
 
-#include "Observer.h"
 #include "Subject.h"
+#include "Observer.h"
 
 class WeatherData : public Subject {
 public:
@@ -11,21 +12,18 @@ public:
         m_wd(0),
         m_sd(0){}
 
-    void registerObserver(Observer* ob) override {
-        m_observers.push_back(ob);
-    }
-
-    void unregisterObserver(Observer* ob) override {
-        auto iter = std::find(m_observers.begin(), m_observers.end(), ob);
-        if(iter != m_observers.end()){
-            std::swap(*iter, m_observers.back());
-            m_observers.pop_back();
-        }
-    }
-
     void notifyObserver(int wd, int sd) override {
-        for(auto& ob : m_observers){
-            ob->update(wd, sd);
+        std::unique_lock<std::mutex> ul(m_mutex);
+        auto iter = m_observers.begin();
+        while(iter != m_observers.end()){
+            std::shared_ptr<Observer> ob(iter->lock());
+            if(ob){ // 可以保证指向的Observer对象一定有效
+                ob->update(wd, sd);
+                ++ iter;
+            }
+            else{
+                iter = m_observers.erase(iter);
+            }
         }
     }
 
@@ -39,58 +37,29 @@ public:
 private:
     int m_wd;
     int m_sd;
-
-    std::vector<Observer*> m_observers;
 };
 
 class PCDisplay : public Observer {
-public:
-    PCDisplay(WeatherData* wd) : 
-        m_wd(wd)
-    {
-        m_wd->registerObserver(this);
-    }
-
-    ~PCDisplay(){
-        m_wd->unregisterObserver(this);
-    }
-
     void update(int wd, int sd){
         std::cout << "PC: 温度: " << wd << "湿度: " << sd << std::endl;
     }
-
-private:
-    WeatherData* m_wd;
 };
 
 class MobileDisplay : public Observer {
-public:
-    MobileDisplay(WeatherData* wd) : 
-        m_wd(wd)
-    {
-        m_wd->registerObserver(this);
-    }
-
-    ~MobileDisplay(){
-        m_wd->unregisterObserver(this);
-    }
-
     void update(int wd, int sd){
         std::cout << "Mobile: 温度: " << wd << "湿度: " << sd << std::endl;
     }
-
-private:
-    WeatherData* m_wd;
 };
 
 int main(){
     WeatherData wd;
-    PCDisplay* pc = new PCDisplay(&wd);
-    MobileDisplay* mob = new MobileDisplay(&wd);
-
+    std::shared_ptr<PCDisplay> pcd(new PCDisplay);
+    std::shared_ptr<MobileDisplay> mod(new MobileDisplay);
+    pcd->setSubject(&wd);
+    mod->setSubject(&wd);
     wd.setWeatherData(23, 60);
     
-    delete mob;
+    mod.reset();
     wd.setWeatherData(30, 40);
 
     return 0;
