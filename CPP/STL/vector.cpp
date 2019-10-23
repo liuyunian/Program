@@ -3,9 +3,16 @@
 
 int main(){
     std::vector<int> v{0, 1, 2};
-    for(std::vector<int>::iterator iter = v.begin(); iter != v.end(); ++ iter){
-        v.push_back(3);
-        std::cout << *iter << std::endl;
+
+    std::vector<int> v2 = v;            // 测试拷贝构造函数
+    for(auto& item : v2){
+        std::cout << item << std::endl;
+    }
+
+    std::vector<int> v3;
+    v3 = v;                             // 测试赋值运算符函数
+    for(auto& item : v3){
+        std::cout << item << std::endl;
     }
 
     return 0;
