@@ -4,15 +4,17 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <atomic>
 
 #include <tools/base/noncopyable.h>
 #include <tools/socket/Socket.h>
 #include <tools/socket/InetAddress.h>
 
-#include "muduo/TcpConnection.h"
+#include "muduo/TcpConnection.h" // 必须引入
 
 class EventLoop;
 class Acceptor;
+class EventLoopThreadPool;
 
 /**
  * TCP服务器，支持单线程和线程池模式
@@ -35,8 +37,18 @@ public:
     }
 
     const std::string& get_ip_and_port() const {
-        return m_hostPort;
+        return m_ipPort;
     }
+
+    EventLoop* get_loop() const {
+        return m_loop;
+    }
+
+    std::shared_ptr<EventLoopThreadPool> get_pool() const {
+        return m_threadPool;
+    }
+
+    void set_number_of_threads(int numThreads);
 
    // 不是线程安全的
     void set_connection_callback(const ConnectionCallback& cb){
@@ -63,11 +75,12 @@ private:
 
 private:
     const std::string m_name;
-    const std::string m_hostPort;
-    bool m_isStart;
+    const std::string m_ipPort;
+    std::atomic<bool> m_started;
 
     EventLoop* m_loop;
     std::unique_ptr<Acceptor> m_acceptor;
+    std::shared_ptr<EventLoopThreadPool> m_threadPool;  // EventLoop线程池
 
     ConnectionCallback m_connectionCallback;
     MessageCallback m_messageCallback;

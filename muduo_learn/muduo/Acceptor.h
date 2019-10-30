@@ -14,13 +14,13 @@ class EventLoop;
 
 class Acceptor : noncopyable {
 public:
-    typedef std::function<void(Socket*, const InetAddress&)> ConnectionCallback;
+    typedef std::function<void(Socket*, const InetAddress&)> NewConnectionCallback;
 
     Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reusePort);
     ~Acceptor();
 
-    void set_connection_callback(const ConnectionCallback& cb){
-        m_connectionCallback = cb;
+    void set_new_connection_callback(const NewConnectionCallback& cb){
+        m_newConnectionCallback = cb;
     }
 
     bool is_listening() const {
@@ -36,7 +36,7 @@ private:
     EventLoop* m_loop;
     ServerSocket m_acceptSocket;
     Channel m_acceptChannel;
-    ConnectionCallback m_connectionCallback;
+    NewConnectionCallback m_newConnectionCallback;
     bool m_listening;
     int m_idleFd;
 };

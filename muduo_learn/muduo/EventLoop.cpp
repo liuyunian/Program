@@ -4,7 +4,7 @@
 #include <poll.h>           // poll
 #include <assert.h>         // assert
 #include <sys/eventfd.h>    // eventfd
-#include <unistd.h>         // read write
+#include <unistd.h>         // read write close
 
 #include <tools/log/log.h>
 
@@ -13,7 +13,7 @@
 #include "muduo/Poller.h"
 #include "muduo/TimerQueue.h"
 
-__thread EventLoop * t_loopInThisThread = nullptr;
+__thread EventLoop* t_loopInThisThread = nullptr;
 
 const int k_pollTimeoutMs = 10000; // 10秒
 
@@ -38,31 +38,42 @@ EventLoop::EventLoop() :
     m_wakeupChannel(new Channel(this, m_wakeupFd)),
     m_currentActiveChannel(nullptr)
 {
-    LOG_INFO("EventLoop %p created in thread %d", this, m_threadId);
+    LOG_DEBUG("EventLoop %p created in thread %d", this, m_threadId);
  
     if(t_loopInThisThread != nullptr){
-        LOG_FATAL("Another EventLoop exists in this thread %d", m_threadId);
+        LOG_FATAL("Another EventLoop exists in thread %d", m_threadId);
     }
     else{
         t_loopInThisThread = this;
     }
 
+    /**
+     * 不是说不要在构造函数中暴露this指针（注册回调）-- 其他线程可能会访问到一个不完整的对象
+     * 注意这里事件循环还没有开始，所以wakeupFd的可读事件不会感知到，也就不会回调可读事件的处理函数
+     * 存在多个IO线程的情况下，会不会wakeupFd的可读事件被其他IO线程感知到并回调其处理函数呢？
+     * 不会的，m_wakeupChannel只属于当前EventLoop对象
+    */
     m_wakeupChannel->set_read_callback(std::bind(&EventLoop::handle_read_event, this));
     m_wakeupChannel->enable_reading();
 }
 
 EventLoop::~EventLoop(){
-    assert(!m_looping); // 断言不处于事件循环中
+    LOG_DEBUG("EventLoop %p of thread %d destructs in thread %d", this, m_threadId, CurrentThread::get_tid());
+    m_wakeupChannel->disable_all();
+    m_wakeupChannel->remove();
+    ::close(m_wakeupFd);
     t_loopInThisThread = nullptr;
 }
 
-void EventLoop::loop(){ // 该成员函数只能在创建EventLoop对象的线程中调用，不能跨线程调用
+void EventLoop::loop(){
     assert(!m_looping);
     assert_in_loop_thread();
 
     m_looping = true;
+    m_quit = false;
 
-    // poll(NULL, 0, 5000); // 等待5秒
+    LOG_DEBUG("EventLoop %p start looping", this);
+
     while(!m_quit){
         m_activeChannels.clear();
         m_pollReturnTime = m_poller->poll(k_pollTimeoutMs, &m_activeChannels);
@@ -78,14 +89,22 @@ void EventLoop::loop(){ // 该成员函数只能在创建EventLoop对象的线�
         handle_pending_functors();
     }
 
-    LOG_INFO("EventLoop %p stop looping", this);
+    LOG_DEBUG("EventLoop %p stop looping in thread %d", this, m_threadId);
     m_looping = false;
 }
 
-void EventLoop::quit(){ // 可以跨线程调用
+void EventLoop::quit(){
     m_quit = true;
+
+    // 为什么只有跨线程调用时才调用wakeup()唤醒
     if(!is_in_loop_thread()){
         wakeup();
+    }
+}
+
+void EventLoop::assert_in_loop_thread(){
+    if(!is_in_loop_thread()){
+        LOG_FATAL("EventLoop %p was created in %d thread, but current thread is %d", this, m_threadId, CurrentThread::get_tid());
     }
 }
 
@@ -140,11 +159,19 @@ void EventLoop::remove_channel(Channel * channel){
     assert(channel->get_owner_loop() == this);
     assert_in_loop_thread();
 
-    if(m_eventHandling){
-        assert(m_currentActiveChannel == channel || std::find(m_activeChannels.begin(), m_activeChannels.end(), channel) == m_activeChannels.end());
+    if(m_eventHandling){    // 为什么要有这样的断言
+        assert(m_currentActiveChannel == channel || 
+            std::find(m_activeChannels.begin(), m_activeChannels.end(), channel) == m_activeChannels.end());
     }
 
     m_poller->remove_channel(channel);
+}
+
+void EventLoop::has_channel(Channel* channel){
+    assert(channel->get_owner_loop() == this);
+    assert_in_loop_thread();
+
+    return m_poller->has_channel(channel);
 }
 
 void EventLoop::wakeup(){

@@ -4,6 +4,7 @@ SET(NET_SRCS
     Channel.cpp
     EventLoop.cpp
     EventLoopThread.cpp
+    EventLoopThreadPool.cpp
     Poller.cpp
     TcpConnection.cpp
     TcpServer.cpp
@@ -27,6 +28,7 @@ set(HEADERS
     Channel.h
     EventLoop.h
     EventLoopThread.h
+    EventLoopThreadPool.h
     TcpConnection.h
     TcpServer.h
     TimerId.h)

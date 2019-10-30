@@ -20,7 +20,7 @@ ADD_EXECUTABLE(Acceptor_test Acceptor_test.cpp)
 TARGET_LINK_LIBRARIES(Acceptor_test muduo_net tools_socket tools_log tools_base)
 
 ADD_EXECUTABLE(TcpServer_test TcpServer_test.cpp)
-TARGET_LINK_LIBRARIES(TcpServer_test muduo_net tools_socket tools_log tools_base)
+TARGET_LINK_LIBRARIES(TcpServer_test muduo_net tools_socket tools_log tools_base pthread)
 
 ADD_EXECUTABLE(TcpServer_test2 TcpServer_test2.cpp)
-TARGET_LINK_LIBRARIES(TcpServer_test2 muduo_net tools_socket tools_log tools_base)
+TARGET_LINK_LIBRARIES(TcpServer_test2 muduo_net tools_socket tools_log tools_base pthread)

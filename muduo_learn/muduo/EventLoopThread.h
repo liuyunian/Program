@@ -8,18 +8,16 @@
 
 #include <tools/base/noncopyable.h>
 
+#include "muduo/Callbacks.h"
+
 class EventLoop;
 
 class EventLoopThread : noncopyable {
 public:
-    typedef std::function<void(EventLoop*)> ThreadInitCallback;
-
-    EventLoopThread(const ThreadInitCallback& cb = ThreadInitCallback());       // 这里是什么操作？
+    EventLoopThread();
     ~EventLoopThread();
 
-    EventLoop* get_loop() const {
-        return m_loop;
-    }
+    EventLoop* start_loop();
 
 private:
     void thread_func();
@@ -28,11 +26,9 @@ private:
     EventLoop* m_loop;
     bool m_exiting;
 
-    std::thread m_thread;
+    std::unique_ptr<std::thread> m_thread;
     std::mutex m_mutex;
     std::condition_variable m_cond;
-
-    ThreadInitCallback m_callback;
 };
 
 #endif // EVENTLOOPTHREAD_H_

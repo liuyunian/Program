@@ -23,7 +23,7 @@ int main(){
 
     InetAddress listenAddr(LISTEN_PORT);
     Acceptor acceptor(&loop, listenAddr, false);
-    acceptor.set_connection_callback(newConnection);
+    acceptor.set_new_connection_callback(newConnection);
     acceptor.listen();
 
     loop.loop();

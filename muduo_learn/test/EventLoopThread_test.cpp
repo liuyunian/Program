@@ -14,7 +14,7 @@ int main(){
     std::cout << "main(): pid = " << getpid() << ", tid = " << CurrentThread::get_tid() << std::endl;
 
     EventLoopThread loopThread;
-    EventLoop * loop = loopThread.get_loop();
+    EventLoop * loop = loopThread.start_loop();
 
     loop->run_in_loop(print);
     sleep(1);

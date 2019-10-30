@@ -56,8 +56,8 @@ void Acceptor::handle_read(){
         return;
     }
 
-    if(m_connectionCallback){
-        m_connectionCallback(connSocket, peerAddr);
+    if(m_newConnectionCallback){
+        m_newConnectionCallback(connSocket, peerAddr);
     }
     else{
         delete connSocket;
