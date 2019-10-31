@@ -3,10 +3,11 @@
 
 #include <vector>
 
-#include <poll.h>
-
 #include "muduo/Poller.h"
 
+// 前向声明
+struct pollfd;
+class Channel;
 
 // IO复用 -- poll
 class PollPoller : public Poller{

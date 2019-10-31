@@ -24,27 +24,21 @@ public:
     /**
      * @brief 阻塞等待IO事件发生，必须在IO线程中调用
      * @param timeoutMs 指定阻塞时间
-     * @param activeChannels 记录当前发生发生事件的Channel
+     * @param activeChannels 记录当前发生事件的Channel
     */
     virtual Timestamp poll(int timeoutMs,  ChannelList* activeChannels) = 0;    // 纯虚函数
 
     /**
      * @brief 改变感兴趣的IO事件，必须在IO线程中调用
-     * @param channel 
     */
     virtual void update_channel(Channel* channel) = 0;                          // 纯虚函数
 
     /**
      * @brief 移除Channel，必须在IO线程中调用
-     * @param channel
     */
-    virtual void remove_channel(Channel* channel) = 0;                         // 纯虚函数
+    virtual void remove_channel(Channel* channel) = 0;                          // 纯虚函数
 
     virtual bool has_channel(Channel* channel) const;                           // 虚函数
-
-    void assert_in_loop_thread() const {
-        m_ownerLoop->assert_in_loop_thread();
-    }
 
     /**
      * @brief 创建默认的Poller实例
@@ -52,10 +46,8 @@ public:
     static Poller* new_default_Poller(EventLoop * loop);
 
 protected:
-    std::map<int, Channel*> m_channelStore;                                    // key: 文件描述符， value: Channel *
-
-private:
     EventLoop* m_ownerLoop;
+    std::map<int, Channel*> m_channelStore;
 };
 
 #endif // POLLER_H_

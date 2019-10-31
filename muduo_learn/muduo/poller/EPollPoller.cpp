@@ -10,8 +10,7 @@
 #include "muduo/poller/EPollPoller.h"
 #include "muduo/Channel.h"
 
-// On Linux, the constants of poll(2) and epoll(4)
-// are expected to be the same.
+// On Linux, the constants of poll(2) and epoll(4) are expected to be the same.
 static_assert(EPOLLIN == POLLIN,        "epoll uses same flag values as poll");
 static_assert(EPOLLPRI == POLLPRI,      "epoll uses same flag values as poll");
 static_assert(EPOLLOUT == POLLOUT,      "epoll uses same flag values as poll");
@@ -19,16 +18,16 @@ static_assert(EPOLLRDHUP == POLLRDHUP,  "epoll uses same flag values as poll");
 static_assert(EPOLLERR == POLLERR,      "epoll uses same flag values as poll");
 static_assert(EPOLLHUP == POLLHUP,      "epoll uses same flag values as poll");
 
-const int k_new = -1;       // 新的Channel
-const int k_added = 1;      // 已经添加过的Channel
-const int k_deleted = 2;    // 已经标记删除的Channel
+const int kNew = -1;       // 新的Channel
+const int kAdded = 1;      // 已经添加过的Channel
+const int kDeleted = 2;    // 已经标记删除的Channel
 
-const int EPollPoller::k_initEventListSize = 16;
+const int EPollPoller::m_kInitEventListSize = 16;
 
 EPollPoller::EPollPoller(EventLoop* loop) : 
     Poller(loop),
     m_epfd(::epoll_create1(EPOLL_CLOEXEC)),
-    m_eventList(k_initEventListSize)
+    m_eventList(m_kInitEventListSize)
 {
     if(m_epfd < 0){
         LOG_SYSFATAL("Failed to created epfd in EPollPoller::EPollPoller(EventLoop*)");
@@ -56,7 +55,6 @@ Timestamp EPollPoller::poll(int timeoutMs, ChannelList* activeChannels){
     }
     else{
         LOG_DEBUG("%d events happended", numEvents);
-
         fill_active_channels(numEvents, activeChannels);
         if(numEvents == m_eventList.size()){                // 需要扩容
             m_eventList.resize(m_eventList.size() * 2);
@@ -70,46 +68,51 @@ void EPollPoller::fill_active_channels(int numEvents, ChannelList* activeChannel
     assert(numEvents <= m_eventList.size());
 
     Channel* channel;
-    std::map<int, Channel*>::const_iterator iter_ch;
+    std::map<int, Channel*>::const_iterator iter;
     for(int i = 0; i < numEvents; ++ i){
         channel = static_cast<Channel*>(m_eventList[i].data.ptr);
-        iter_ch = m_channelStore.find(channel->get_fd());
-        assert(iter_ch != m_channelStore.end());
-        assert(iter_ch->second == channel);
+        iter = m_channelStore.find(channel->get_fd());
+        assert(iter != m_channelStore.end());
+        assert(iter->second == channel);
 
         channel->set_revents(m_eventList[i].events);
         activeChannels->push_back(channel);
     }
 }
 
-void EPollPoller::update_channel(Channel * channel){
-    assert_in_loop_thread();                                                     // 从父类Poller继承来的成员函数
+void EPollPoller::update_channel(Channel* channel){
+    m_ownerLoop->assert_in_loop_thread();
 
+    /**
+     * 在epoll模式中，Channel的index用来区别该Channel对象EPollPoller的状态
+     * kNew -- 没有添加关注过
+     * kAdded -- 已经添加关注过，此时updata_channel表示修改关注的事件，remove_channel表示移除不再关注事件
+     * kDeleted -- 以及被移除，可以再次被添加
+    */ 
     const int index = channel->get_index();
-    int channel_fd = channel->get_fd();
-    LOG_DEBUG("fd = %d events = %d index = %d", channel_fd, channel->get_events(), index);
-
-    if(index == k_new || index == k_deleted){
-        if(index == k_new){                                                     // 新Channel
-            assert(m_channelStore.find(channel_fd) == m_channelStore.end());
-            m_channelStore.insert({channel_fd, channel});
+    int fd = channel->get_fd();
+    LOG_DEBUG("fd = %d events = %d index = %d", fd, channel->get_events(), index);
+    if(index == kNew || index == kDeleted){
+        if(index == kNew){                                                                  // 新Channel
+            assert(m_channelStore.find(fd) == m_channelStore.end());
+            m_channelStore.insert({fd, channel});
         }
-        else{                                                                   // 之前标记过已经删除的Channel
-            assert(m_channelStore.find(channel_fd) != m_channelStore.end());
-            assert(m_channelStore[channel_fd] == channel);
+        else{                                                                               // 之前标记过已经删除的Channel
+            assert(m_channelStore.find(fd) != m_channelStore.end());
+            assert(m_channelStore[fd] == channel);
         }
 
-        channel->set_index(k_added);                                            // 标记该通道是已经添加过的了
+        channel->set_index(kAdded);                                                         // 标记该Channel对象是已经添加过的了
         update(EPOLL_CTL_ADD, channel);
     }
-    else{
-        assert(m_channelStore.find(channel_fd) != m_channelStore.end());
-        assert(m_channelStore[channel_fd] == channel);
-        assert(index == k_added);                                               // 断言当前的channel是已经添加过的
+    else{                                                                                   // 该Channel之前已经添加过了，现在的操作是修改关注的事件
+        assert(m_channelStore.find(fd) != m_channelStore.end());
+        assert(m_channelStore[fd] == channel);
+        assert(index == kAdded);
 
-        if(channel->is_none_events()){                                           // Channel关注的事件为空
+        if(channel->is_none_events()){                                                      // Channel关注的事件为空，此时移除该Channel
             update(EPOLL_CTL_DEL, channel);
-            channel->set_index(k_deleted);
+            channel->set_index(kDeleted);
         }
         else{
             update(EPOLL_CTL_MOD, channel);
@@ -118,25 +121,25 @@ void EPollPoller::update_channel(Channel * channel){
 }
 
 void EPollPoller::remove_channel(Channel* channel){
-    assert_in_loop_thread();
+    m_ownerLoop->assert_in_loop_thread();
 
     int index = channel->get_index();
-    int channel_fd = channel->get_fd();
-    LOG_DEBUG("fd = %d events = %d index = %d", channel_fd, channel->get_events(), index);
+    int fd = channel->get_fd();
+    LOG_DEBUG("fd = %d events = %d index = %d", fd, channel->get_events(), index);
 
-    assert(m_channelStore.find(channel_fd) != m_channelStore.end());
-    assert(m_channelStore[channel_fd] == channel);
-    assert(channel->is_none_events());
-    assert(index == k_added || index == k_deleted);
+    assert(m_channelStore.find(fd) != m_channelStore.end());
+    assert(m_channelStore[fd] == channel);
+    // assert(channel->is_none_events());                                           // 在Channell::remove中已经断言过了
+    assert(index == kAdded || index == kDeleted);                                   // 什么情况下存在标记为kDeleted，但是没有从m_channelStore中移除？
 
-    size_t n = m_channelStore.erase(channel_fd);
-    assert(n == 1);                                                         // 断言删除的元素个数为1
+    size_t n = m_channelStore.erase(fd);
+    assert(n == 1);
 
-    if(index == k_added){
+    if(index == kAdded){
         update(EPOLL_CTL_DEL, channel);
     }
 
-    channel->set_index(k_new);
+    channel->set_index(kNew);
 }
 
 void EPollPoller::update(int operation, Channel* channel){
@@ -144,14 +147,28 @@ void EPollPoller::update(int operation, Channel* channel){
     memset(&event, 0, sizeof(event));
     event.events = channel->get_events();
     event.data.ptr = channel;
-    int channel_fd = channel->get_fd();
-
-    if(::epoll_ctl(m_epfd, operation, channel_fd, &event) < 0){
+    int fd = channel->get_fd();
+    LOG_DEBUG("epoll_ctl fd = %d, operation = %s, event = %s", fd, operation_to_string(operation), channel->events_to_string().c_str());
+    if(::epoll_ctl(m_epfd, operation, fd, &event) < 0){
         if(operation == EPOLL_CTL_DEL){
-            LOG_SYSERR("epoll_ctl op = %d fd = %d", operation, channel_fd);
+            LOG_SYSERR("epoll_ctl op = %s fd = %d", operation_to_string(operation), fd);
         }
         else{
-            LOG_SYSFATAL("epoll_ctl op = %d fd = %d", operation, channel_fd);
+            LOG_SYSFATAL("epoll_ctl op = %s fd = %d", operation_to_string(operation), fd);
         }
+    }
+}
+
+const char* EPollPoller::operation_to_string(int operation){
+    switch(operation){
+    case EPOLL_CTL_ADD:
+        return "ADD";
+    case EPOLL_CTL_DEL:
+        return "DEL";
+    case EPOLL_CTL_MOD:
+        return "MOD";
+    default:
+        assert(false && "ERROR op");
+        return "Unknown Operation";
     }
 }

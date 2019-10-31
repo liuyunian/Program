@@ -5,6 +5,10 @@
 
 #include "muduo/Poller.h"
 
+// 前向声明
+struct epoll_event;
+class Channel;
+
 // IO复用 -- epoll
 class EPollPoller : public Poller {
 public:
@@ -21,8 +25,11 @@ private:
     void fill_active_channels(int numEvents, ChannelList* activeChannels) const;
     void update(int operation, Channel* channel);
 
+    // for debug
+    const char* operation_to_string(int operation);
+
 private:
-    static const int k_initEventListSize;
+    static const int m_kInitEventListSize;  // epoll返回的事件列表的初始长度
 
     int m_epfd;
     std::vector<struct epoll_event> m_eventList;
