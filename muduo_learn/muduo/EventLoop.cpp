@@ -20,7 +20,7 @@ const int k_pollTimeoutMs = 10000; // 10秒
 static int create_eventfd(){
     int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if(evtfd < 0){
-        LOG_SYSFATAL("Failed to create eventfd");
+        LOG_SYSFATAL("Failed to create eventfd in create_eventfd");
     }
 
     return evtfd;
@@ -53,7 +53,7 @@ EventLoop::EventLoop() :
      * 存在多个IO线程的情况下，会不会wakeupFd的可读事件被其他IO线程感知到并回调其处理函数呢？
      * 不会的，m_wakeupChannel只属于当前EventLoop对象
     */
-    m_wakeupChannel->set_read_callback(std::bind(&EventLoop::handle_read_event, this));
+    m_wakeupChannel->set_read_callback(std::bind(&EventLoop::handle_read, this));
     m_wakeupChannel->enable_reading();
 }
 
@@ -109,18 +109,21 @@ void EventLoop::assert_in_loop_thread(){
 }
 
 void EventLoop::run_in_loop(const Functor& cb){
-    if(is_in_loop_thread()){ // 如果是当前IO线程调用run_in_loop()，则同步执行回调函数cb
+    // 如果是当前IO线程调用run_in_loop()，则同步执行回调函数cb
+    // 如果是其他线程调用run_in_loop()，则异步的将回调函数添加到m_pendingFunctors队列中
+    if(is_in_loop_thread()){
         cb();
     }
-    else{                   // 如果是其他线程调用run_in_loop()，则异步的将回调函数添加到m_pendingFunctors队列中
+    else{
         queue_in_loop(cb);
     }
 }
 
 void EventLoop::queue_in_loop(const Functor& cb){
-    m_mutex.lock();
-    m_pendingFunctors.push_back(cb);
-    m_mutex.unlock();
+    {
+        std::unique_lock<std::mutex> ul(m_mutex);
+        m_pendingFunctors.push_back(cb);
+    }
 
     // 调用queue_in_loop()的线程不是IO线程，需要wakeup
     // 调用queue_in_loop()的线程是IO线程，但是此时正在处理pending functor，需要wakeup
@@ -130,22 +133,22 @@ void EventLoop::queue_in_loop(const Functor& cb){
     }
 }
 
-TimerId EventLoop::run_at(const Timestamp time, const TimerCallback & cb){
+TimerId EventLoop::run_at(const Timestamp time, const TimerCallback& cb){
     return m_timerQueue->add_timer(cb, time, 0);
 }
 
-TimerId EventLoop::run_after(double delay, const TimerCallback & cb){
+TimerId EventLoop::run_after(double delay, const TimerCallback& cb){
     Timestamp time(add_time(Timestamp::now(), delay));
     return run_at(time, cb);
 }
 
-TimerId EventLoop::run_every(double interval, const TimerCallback & cb){
+TimerId EventLoop::run_every(double interval, const TimerCallback& cb){
     Timestamp time(add_time(Timestamp::now(), interval));
     return m_timerQueue->add_timer(cb, time, interval);
 }
 
 void EventLoop::cancel(TimerId timerId){
-    m_timerQueue->cancel(timerId);
+    m_timerQueue->cancel_timer(timerId);
 }
 
 void EventLoop::update_channel(Channel * channel){
@@ -182,24 +185,24 @@ void EventLoop::wakeup(){
     }
 }
 
-void EventLoop::handle_read_event(){
+void EventLoop::handle_read(){
     uint64_t one;
     ssize_t n = ::read(m_wakeupFd, &one, sizeof one);
     if (n != sizeof one){
-        LOG_SYSERR("EventLoop::handle_read_event() reads %d bytes instead of 8", n);
+        LOG_SYSERR("EventLoop::handle_read() reads %d bytes instead of 8", n);
     }
 }
 
 void EventLoop::handle_pending_functors(){
     std::vector<Functor> functors;
-
     m_callingPendingFunctors = true;
 
-    m_mutex.lock();
-    functors.swap(m_pendingFunctors);
-    m_mutex.unlock();
+    {
+        std::unique_lock<std::mutex> ul(m_mutex);
+        functors.swap(m_pendingFunctors);
+    }
 
-    for(auto & pendingFunctor : functors){
+    for(auto& pendingFunctor : functors){
         pendingFunctor();
     }
 

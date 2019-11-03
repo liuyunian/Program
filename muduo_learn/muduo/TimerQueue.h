@@ -3,8 +3,6 @@
 
 #include <set>
 #include <vector>
-#include <atomic>
-#include <functional>
 
 #include <tools/base/Timestamp.h>
 #include <tools/base/noncopyable.h>
@@ -19,12 +17,11 @@ class Timer;
 class TimerQueue : noncopyable {
 public:
     TimerQueue(EventLoop* loop);
-
     ~TimerQueue();
 
     TimerId add_timer(TimerCallback cb, Timestamp when, double interval);
 
-    void cancel(TimerId timerId);
+    void cancel_timer(TimerId timerId);
 
 private:
     typedef std::pair<Timestamp, Timer*> TimerEntry;
@@ -39,7 +36,7 @@ private:
 
     bool insert(Timer* timer);
 
-    void handle_read_event();                                                    // m_timerfd可读事件发生时的回调函数
+    void handle_event();
 
     std::vector<TimerEntry> get_expired(Timestamp now);
 
@@ -55,7 +52,7 @@ private:
     ActiveTimerSet m_activeTimers;
     ActiveTimerSet m_cancelingTimers;
 
-    std::atomic_bool m_callingExpiredTimer;
+    bool m_callingExpiredTimer; // 只会在所属的IO线程中调用，所以不用使用原子操作
 };
 
 #endif // TIMERQUEUE_H_

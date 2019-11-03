@@ -11,7 +11,7 @@ public:
         m_timer(nullptr),
         m_sequence(0){}
 
-    TimerId(Timer * timer, int64_t seq) : 
+    TimerId(Timer* timer, int64_t seq) : 
         m_timer(timer),
         m_sequence(seq){}
 

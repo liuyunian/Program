@@ -2,7 +2,6 @@
 #define TIMER_H_
 
 #include <atomic>
-#include <functional>
 
 #include <tools/base/Timestamp.h>
 #include <tools/base/noncopyable.h>
@@ -14,12 +13,6 @@ public:
     Timer(TimerCallback& cb, Timestamp when, double interval);
 
     ~Timer() = default;
-
-    void run() const {
-        m_callback();
-    }
-
-    void restart(Timestamp now);
 
     Timestamp get_expiration() const {
         return m_expiration;
@@ -33,6 +26,12 @@ public:
         return m_sequence;
     }
 
+    void run() const {
+        m_callback();
+    }
+
+    void restart(Timestamp now);
+
     static int64_t get_timer_num(){
         return m_sNumCreated;
     }
@@ -42,7 +41,6 @@ private:
     Timestamp m_expiration;
     const double m_interval;
     const bool m_repeat;
-
     const int64_t m_sequence;
 
     static std::atomic<int64_t> m_sNumCreated;
