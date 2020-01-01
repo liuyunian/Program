@@ -12,7 +12,7 @@ Timer::Timer(TimerCallback& cb, Timestamp when, double interval) :
 
 void Timer::restart(Timestamp now){
     if(m_repeat){
-        m_expiration = add_time(now, m_interval);
+        m_expiration = now.add_time(m_interval);
     }
     else{
         m_expiration = Timestamp::invalid();

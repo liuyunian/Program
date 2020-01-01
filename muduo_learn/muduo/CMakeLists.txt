@@ -1,20 +1,34 @@
 # ======================== source =========================
-SET(NET_SRCS
-    Acceptor.cpp
-    Channel.cpp
-    EventLoop.cpp
-    EventLoopThread.cpp
-    EventLoopThreadPool.cpp
-    Poller.cpp
-    TcpConnection.cpp
-    TcpServer.cpp
-    Timer.cpp
-    TimerQueue.cpp
-    poller/PollPoller.cpp
-    poller/EPollPoller.cpp)
+SET(MUDUO_SRC
+  Acceptor.cpp
+  Channel.cpp
+  EventLoop.cpp
+  EventLoopThread.cpp
+  EventLoopThreadPool.cpp
+  Poller.cpp
+  TCPConnection.cpp
+  TCPServer.cpp
+  Timer.cpp
+  TimerQueue.cpp
+  poller/PollPoller.cpp
+  poller/EPollPoller.cpp
+)
+
+set(MUDUO_HDR
+  Acceptor.h
+  Buffer.h
+  Callbacks.h
+  Channel.h
+  EventLoop.h
+  EventLoopThread.h
+  EventLoopThreadPool.h
+  TCPConnection.h
+  TCPServer.h
+  TimerId.h
+)
 
 # ========================= build ==========================
-ADD_LIBRARY(muduo_net STATIC ${NET_SRCS})
+ADD_LIBRARY(muduo_net STATIC ${MUDUO_SRC})
 TARGET_LINK_LIBRARIES(muduo_net tools_socket tools_log tools_base)
 
 # ======================== install =========================
@@ -22,15 +36,4 @@ TARGET_LINK_LIBRARIES(muduo_net tools_socket tools_log tools_base)
 INSTALL(TARGETS muduo_net ARCHIVE DESTINATION lib)
 
 # *.h -- install path = /usr/local/include/muduo
-set(HEADERS
-    Acceptor.h
-    Callbacks.h
-    Channel.h
-    EventLoop.h
-    EventLoopThread.h
-    EventLoopThreadPool.h
-    TcpConnection.h
-    TcpServer.h
-    TimerId.h)
-
-INSTALL(FILES ${HEADERS} DESTINATION include/muduo)
+INSTALL(FILES ${MUDUO_HDR} DESTINATION include/muduo)

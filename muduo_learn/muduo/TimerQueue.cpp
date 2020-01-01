@@ -27,8 +27,8 @@ static struct timespec get_time_from_now(Timestamp when){
     }
 
     struct timespec ts;
-    ts.tv_sec = static_cast<time_t>(microseconds / Timestamp::k_microsecondsPerSecond);
-    ts.tv_nsec = static_cast<long>((microseconds % Timestamp::k_microsecondsPerSecond) * 1000);
+    ts.tv_sec = static_cast<time_t>(microseconds / Timestamp::kmicrosecondsPerSecond);
+    ts.tv_nsec = static_cast<long>((microseconds % Timestamp::kmicrosecondsPerSecond) * 1000);
 
     return ts;
 }

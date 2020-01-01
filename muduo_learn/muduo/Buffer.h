@@ -2,17 +2,18 @@
 #define BUFFER_H_
 
 #include <string>
+#include <vector>
 #include <algorithm>  // std::copy
 
 #include <assert.h>   // assert
 
 #include <tools/base/copyable.h>
 
+static const size_t kCheapPrepend = 8;
+static const size_t kInitialSize = 1024;
+
 class Buffer : copyable {
 public:
-  static const size_t kCheapPrepend = 8;
-  static const size_t kInitialSize = 1024;
-
   explicit Buffer(size_t initialSize = kInitialSize) : 
     m_buffer(kCheapPrepend + kInitialSize),
     m_readerIndex(kCheapPrepend),
@@ -33,6 +34,18 @@ public:
     return m_buffer.size() - m_writerIndex;
   }
 
+  const char* readable_index() const {
+    return m_buffer.data() + m_readerIndex;
+  }
+
+  char* writable_index(){
+    return m_buffer.data() + m_writerIndex;
+  }
+
+  void adjust_writer_index(size_t len){
+    m_writerIndex += len;
+  }
+
   // 从readable区域读走数据之后，调用retrieve()，readerIndex右移
   void retrieve(size_t len){
     assert(len <= readable_bytes());
@@ -50,10 +63,22 @@ public:
   // void retrieve_int16();
   // void retrieve_int8();
 
+  std::string retrieve_as_string(size_t len){
+    assert(len <= readable_bytes());
+    std::string result(readable_index(), len);
+    retrieve(len);
+    return result;
+  }
+
+  std::string retrieve_all_as_string(){
+    return retrieve_as_string(readable_bytes());
+  }
+
   void retrieve_all(){
     m_readerIndex = kCheapPrepend;
     m_writerIndex = kCheapPrepend;
   }
+
 
   // 填充数据
   void append(const std::string &str){
@@ -61,7 +86,7 @@ public:
   }
 
   void append(const char *data, size_t len){
-    ensure_writeable_bytes();
+    ensure_writeable_bytes(len);
     std::copy(data, data+len, m_buffer.data());
     has_written(len);
   }
@@ -75,7 +100,7 @@ public:
   // void append_int16(int16_t x);
   // void append_int8(int8_t x);
 
-  void ensure_writeable_bytes(){
+  void ensure_writeable_bytes(size_t len){
     if(writable_bytes() < len){
       make_space(len);
     }
@@ -93,9 +118,7 @@ public:
   // int16_t read_int16();
   // int8_t read_int8();
 
-  const char* peek() const {
-    return m_buffer.data() + m_readerIndex;
-  }
+
   // int64_t peek_int64();
   // int32_t peek_int32();
   // int16_t peek_int16();
@@ -108,13 +131,8 @@ public:
   // void prepend_int16(int16_t x);
   // void prepend_int8(int8_t x);
 
-  /**
-   * @brief 从socket读取数据到buffer
-  */
-  ssize_t read_fd(int fd, int *savedErrno);
-
 private:
-  void make_space(){
+  void make_space(size_t len){
     if(writable_bytes()+prependable_bytes() < len + kCheapPrepend){
       m_buffer.resize(m_writerIndex+len);
     }
@@ -122,7 +140,7 @@ private:
       assert(kCheapPrepend < m_readerIndex);
       size_t readable = readable_bytes();
       std::copy(m_buffer.data()+m_readerIndex,
-                m_buffer.data()+m_writerIndex,
+                writable_index(),
                 m_buffer.data()+kCheapPrepend);
       m_readerIndex = kCheapPrepend;
       m_writerIndex = m_readerIndex + readable;

@@ -30,11 +30,11 @@ public:
     }
 
     bool is_none_events() const {
-        return m_events == k_noneEvent;
+        return m_events == kNoneEvent;
     }
 
     bool is_write_events() const {
-        return m_events& k_writeEvent;
+        return m_events& kWriteEvent;
     }
 
     int get_revents() const {
@@ -70,28 +70,28 @@ public:
     }
 
     void enable_reading(){
-        m_events |= k_readEvent;
+        m_events |= kReadEvent;
         update();
     }
 
     void disable_reading(){
-        m_events &= ~k_readEvent;
+        m_events &= ~kReadEvent;
         update();
     }
 
     void enable_writing(){
-        m_events |= k_writeEvent;
-        update();
+      m_events |= kWriteEvent;
+      update();
     }
 
     void disable_writing(){
-        m_events &= ~k_writeEvent;
-        update();
+      m_events &= ~kWriteEvent;
+      update();
     }
 
     void disable_all(){
-        m_events = k_noneEvent;
-        update();
+      m_events = kNoneEvent;
+      update();
     }
 
     // 将被shared_ptr管理的channel持有者与该channel绑定
@@ -118,29 +118,29 @@ private:
     */
     void update();
 
-    std::string events_to_string(int events);
+    std::string events_to_string(int events) const;
 
 private:
-    static const int k_noneEvent;   // 空事件常量
-    static const int k_readEvent;   // 读事件常量
-    static const int k_writeEvent;  // 写事件常量
+  static const int kNoneEvent;   // 空事件常量
+  static const int kReadEvent;   // 读事件常量
+  static const int kWriteEvent;  // 写事件常量
 
-    EventLoop* m_loop;              // 记录所属的EventLoop对象
-    const int m_fd;                 // 负责的文件描述符，不负责关闭该fd
-    std::weak_ptr<void> m_tie;      // 指向绑定的对象
+  EventLoop *m_loop;              // 记录所属的EventLoop对象
+  const int m_fd;                 // 负责的文件描述符，不负责关闭该fd
+  std::weak_ptr<void> m_tie;      // 指向绑定的对象
 
-    bool m_addedToLoop;             // 记录该Channel对象是否已经添加到EventLoop中
-    bool m_tied;                    // 记录该Channel对象是否已经绑定，绑定的对象真正持有该Channel对象
-    bool m_eventHandling;           // 是否正在处理事件
+  bool m_addedToLoop;             // 记录该Channel对象是否已经添加到EventLoop中
+  bool m_tied;                    // 记录该Channel对象是否已经绑定，绑定的对象真正持有该Channel对象
+  bool m_eventHandling;           // 是否正在处理事件
 
-    int m_events;                   // 所负责的文件描述符(fd)关注的事件
-    int m_revents;                  // poll/epoll返回的发生事件
-    int m_index;                    // used by Poller，既用来表征在m_pollfdList中的位置又用于区分add/update操作
+  int m_events;                   // 所负责的文件描述符(fd)关注的事件
+  int m_revents;                  // poll/epoll返回的发生事件
+  int m_index;                    // used by Poller，既用来表征在m_pollfdList中的位置又用于区分add/update操作
 
-    ReadEventCallback m_readCallback;   // 读事件回调函数
-    EventCallback m_writeCallback;      // 写事件回调函数
-    EventCallback m_closeCallback;      // 连接关闭事件回调函数
-    EventCallback m_errorCallback;      // 错误事件回调函数
+  ReadEventCallback m_readCallback;   // 读事件回调函数
+  EventCallback m_writeCallback;      // 写事件回调函数
+  EventCallback m_closeCallback;      // 连接关闭事件回调函数
+  EventCallback m_errorCallback;      // 错误事件回调函数
 };
 
 #endif // CHANNEL_H_

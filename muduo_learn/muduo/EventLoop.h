@@ -62,7 +62,7 @@ public:
     // internal usage
     void update_channel(Channel* channel);  // 在Poller中添加或者更新该Channel对象
     void remove_channel(Channel* channel);  // 在Poller中移除该Channel对象
-    void has_channel(Channel* channel);     // 判断Poller中是否有该Channel对象
+    bool has_channel(Channel* channel);     // 判断Poller中是否有该Channel对象
 
     void wakeup();
 
@@ -83,8 +83,8 @@ private:
     std::vector<Channel*> m_activeChannels;     // Poller返回的活动通道
     Channel* m_currentActiveChannel;            // 当前正在处理的活动通道
 
-    int m_wakeupFd;                             // 用于事件唤醒
-    std::unique_ptr<Channel> m_wakeupChannel;   // wakeupFd所属的Channel
+    int m_eventfd;                              // 用于事件唤醒
+    std::unique_ptr<Channel> m_wakeupChannel;   // eventfd所属的Channel
     std::mutex m_mutex;                         
     std::vector<Functor> m_pendingFunctors;     // 用于IO线程执行其他非IO型任务
 
