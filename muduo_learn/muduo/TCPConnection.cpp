@@ -23,6 +23,7 @@ TCPConnection::TCPConnection(const std::string &name,
   m_channel(new Channel(m_loop, m_connSocket.get_sockfd()))
 {
   m_channel->set_read_callback(std::bind(&TCPConnection::handle_read, this, std::placeholders::_1));
+  m_channel->set_write_callback(std::bind(&TCPConnection::handle_write, this));
   m_channel->set_close_callback(std::bind(&TCPConnection::handle_close, this));
   m_channel->set_error_callback(std::bind(&TCPConnection::handle_error, this));
   m_connSocket.set_keep_alive(true);
@@ -58,12 +59,55 @@ void TCPConnection::send(std::string &&msg){
 
 void TCPConnection::send(const void *msg, ssize_t len){
   if(m_state == Connected){
-    if(m_loop->is_in_loop_thread()){
-      send_in_loop(msg, len);
+    m_loop->run_in_loop(std::bind(&TCPConnection::send_in_loop, this, msg, len));
+  }
+}
+
+void TCPConnection::shutdown(){
+  if(m_state == Connected){
+    m_state = Disconnecting;
+    m_loop->run_in_loop(std::bind(&TCPConnection::shutdown_in_loop, this));
+  }
+}
+
+void TCPConnection::send_in_loop(const void *msg, ssize_t len){
+  m_loop->assert_in_loop_thread();
+
+  if(m_state == Disconnected){
+    LOG_WARN("disconnected, give up writing");
+    return;
+  }
+
+  ssize_t nwrote = 0;
+  ssize_t remaining = len;
+  if(!m_channel->is_writing() && m_outputBuffer.readable_bytes() == 0){
+    nwrote = m_connSocket.write(msg, len);
+    if(nwrote < 0){
+      nwrote = 0;
+      if(errno != EWOULDBLOCK){
+        LOG_SYSERR("Failed to send msg in TCPConnection::send_in_loop()");
+      }
     }
     else{
-      m_loop->run_in_loop(std::bind(&TCPConnection::send_in_loop, this, msg, len));
+      remaining -= nwrote;
     }
+  }
+
+  assert(remaining <= len);
+  if(remaining > 0){
+    size_t oldLen = m_outputBuffer.readable_bytes();
+    m_outputBuffer.append(static_cast<const char*>(msg)+nwrote, remaining);
+    if (!m_channel->is_writing())
+    {
+      m_channel->enable_writing();
+    }
+  }
+}
+
+void TCPConnection::shutdown_in_loop(){
+  m_loop->assert_in_loop_thread();
+  if(!m_channel->is_writing()){
+    m_connSocket.shutdown_write();
   }
 }
 
@@ -99,6 +143,26 @@ void TCPConnection::handle_read(Timestamp recvTime){
   }
 }
 
+void TCPConnection::handle_write(){
+  m_loop->assert_in_loop_thread();
+
+  if(m_channel->is_writing()){
+    ssize_t n = m_connSocket.write(m_outputBuffer.readable_index(), m_outputBuffer.readable_bytes());
+    if(n < 0){
+      LOG_SYSERR("TCPConnection::handle_write()");
+    }
+    else{
+      m_outputBuffer.retrieve(n);
+      if(m_outputBuffer.readable_bytes() == 0){
+        m_channel->disable_writing();
+        if(m_state == Disconnecting){
+          shutdown_in_loop();
+        }
+      }
+    }
+  }
+}
+
 void TCPConnection::handle_close(){
   m_loop->assert_in_loop_thread();
 
@@ -114,38 +178,4 @@ void TCPConnection::handle_close(){
 
 void TCPConnection::handle_error(){
   LOG_ERR("TCPConnection::handle_error()");
-}
-
-void TCPConnection::send_in_loop(const void *msg, ssize_t len){
-  m_loop->assert_in_loop_thread();
-
-  if(m_state == Disconnected){
-    LOG_WARN("disconnected, give up writing");
-    return;
-  }
-
-  ssize_t nwrote = 0;
-  ssize_t remaining = len;
-  if(!m_channel->is_writing() && m_outputBuffer.readable_bytes() == 0){
-    nwrote = m_connSocket.write(msg, len);
-    if(nwrote < 0){
-      nwrote = 0;
-      if(errno != EWOULDBLOCK){
-        LOG_SYSERR("Failed to send msg in TCPConnection::send_in_loop()");
-      }
-    }
-    else{
-      remaining -= nwrote;
-    }
-  }
-
-  assert(remaining <= len);
-  if(remaining > 0){
-    size_t oldLen = m_outputBuffer.readable_bytes();
-    m_outputBuffer.append(static_cast<const char*>(msg)+nwrote, remaining);
-    if (!m_channel->is_writing())
-    {
-      m_channel->enable_writing();
-    }
-  }
 }

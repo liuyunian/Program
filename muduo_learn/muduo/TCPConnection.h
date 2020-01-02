@@ -69,6 +69,8 @@ public:
 
   void send(const void *msg, ssize_t len);
 
+  void shutdown();
+
 private:
   enum State {
     Connecting,
@@ -77,12 +79,14 @@ private:
     Disconnected
   };
 
+  void send_in_loop(const void *msg, ssize_t len);
+
+  void shutdown_in_loop();
+
   void handle_read(Timestamp time);
   void handle_write();
   void handle_close();
   void handle_error();
-
-  void send_in_loop(const void *msg, ssize_t len);
 
 private:
   std::string m_name;         // 连接名
