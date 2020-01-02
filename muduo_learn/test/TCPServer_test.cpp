@@ -6,6 +6,7 @@
 #include <muduo/EventLoop.h>
 #include <muduo/TCPServer.h>
 #include <muduo/Buffer.h>
+#include <muduo/TCPConnection.h>
 
 #include <tools/log/log.h>
 #include <tools/base/Timestamp.h>
@@ -41,8 +42,8 @@ private:
   }
 
   void onMessage(const TCPConnectionPtr &tcpc, Buffer *buf, Timestamp recvTime){
-    std::string msg(buf->retrieve_all_as_string()); 
-    LOG_INFO("onMessage(): received [%s] from connection [%s] at %s", msg.c_str(), tcpc->get_name().c_str(), recvTime.to_formatted_string().c_str());
+    LOG_INFO("onMessage(): received %d bytes data from connection [%s] at %s", buf->readable_bytes(), tcpc->get_name().c_str(), recvTime.to_formatted_string().c_str());
+    tcpc->send(buf->retrieve_all_as_string());
   }
 
 private:

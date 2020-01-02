@@ -15,13 +15,9 @@ SET(MUDUO_SRC
 )
 
 set(MUDUO_HDR
-  Acceptor.h
   Buffer.h
   Callbacks.h
-  Channel.h
   EventLoop.h
-  EventLoopThread.h
-  EventLoopThreadPool.h
   TCPConnection.h
   TCPServer.h
   TimerId.h

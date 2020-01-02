@@ -11,7 +11,6 @@
 #include <tools/socket/InetAddress.h>
 
 #include "muduo/Callbacks.h"
-#include "muduo/TCPConnection.h"
 
 class EventLoop;
 class Acceptor;
@@ -46,13 +45,11 @@ public:
 
   void set_number_of_threads(int numThreads);
 
-  // 不是线程安全的
-  void set_connection_callback(const ConnectionCallback& cb){
+  void set_connection_callback(const ConnectionCallback &cb){
     m_connectionCallback = cb;
   }
 
-  // 不是线程安全的
-  void set_message_callback(const MessageCallback& cb){
+  void set_message_callback(const MessageCallback &cb){
     m_messageCallback = cb;
   }
 

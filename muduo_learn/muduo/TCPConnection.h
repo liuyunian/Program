@@ -11,10 +11,6 @@
 #include "muduo/Callbacks.h"
 #include "muduo/Buffer.h"
 
-void default_connection_callback(const TCPConnectionPtr& conn);
-
-void default_message_callback(const TCPConnectionPtr& conn, const char* data, ssize_t len);
-
 // 使用前向声明的好处是：避免头文件过于庞大
 class EventLoop; 
 class Channel;
@@ -69,6 +65,10 @@ public:
 
   void connect_destroyed();
 
+  void send(std::string &&msg);
+
+  void send(const void *msg, ssize_t len);
+
 private:
   enum State {
     Connecting,
@@ -78,10 +78,11 @@ private:
   };
 
   void handle_read(Timestamp time);
-
+  void handle_write();
   void handle_close();
-
   void handle_error();
+
+  void send_in_loop(const void *msg, ssize_t len);
 
 private:
   std::string m_name;         // 连接名

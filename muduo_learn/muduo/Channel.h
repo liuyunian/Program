@@ -33,8 +33,12 @@ public:
         return m_events == kNoneEvent;
     }
 
-    bool is_write_events() const {
-        return m_events& kWriteEvent;
+    bool is_writing() const {
+        return m_events & kWriteEvent;
+    }
+
+    bool is_reading() const {
+        return m_events & kReadEvent;
     }
 
     int get_revents() const {
